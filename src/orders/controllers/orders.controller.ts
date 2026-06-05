@@ -25,10 +25,11 @@ export class OrdersController {
   @Post()
   async createOrder(
     @Body() order: CreateOrderDto,
-  ): Promise<{ message: string }> {
-    await this.ordersService.createOrder(order);
+  ): Promise<{ message: string; data: { id: string } }> {
+    const id = await this.ordersService.createOrder(order);
     return {
       message: 'Order created successfully',
+      data: { id },
     };
   }
   @Put('/:id')
