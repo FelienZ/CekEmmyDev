@@ -1,4 +1,4 @@
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, OrderType, PaymentStatus } from '@prisma/client';
 import { OrderItemResponseDto } from './orderItem-response.dto';
 export class OrderResponseDto {
   id!: string;
@@ -6,6 +6,9 @@ export class OrderResponseDto {
   totalAmount!: number;
   orderItems!: OrderItemResponseDto[];
   status!: OrderStatus;
+  paymentStatus!: PaymentStatus;
+  orderType!: OrderType;
+  pickupDate!: string
   createdAt!: Date;
   updatedAt!: Date;
 }
