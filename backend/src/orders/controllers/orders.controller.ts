@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Put,
 } from '@nestjs/common';
@@ -11,6 +12,7 @@ import { OrdersService } from '../services/orders.service';
 import { OrderResponseDto } from '../dto/order-response.dto';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { UpdateOrderDto } from '../dto/update-order.dto';
+import { PaymentStatus } from '@prisma/client';
 @Controller('orders')
 export class OrdersController {
   constructor(private ordersService: OrdersService) {}
@@ -40,6 +42,16 @@ export class OrdersController {
     await this.ordersService.updateOrder(id, order);
     return {
       message: 'Order updated successfully',
+    };
+  }
+  @Patch('/:id/payment')
+  async updatePaymentStatus(
+    @Param('id') id: string,
+    @Body() status: PaymentStatus,
+  ): Promise<{ message: string }> {
+    await this.ordersService.updatePaymentStatus(id, status);
+    return {
+      message: 'Payment status updated successfully',
     };
   }
   @Delete('/:id')
