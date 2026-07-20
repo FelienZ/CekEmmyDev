@@ -8,6 +8,13 @@ export class ProductRepository {
   async findAll() {
     return this.prisma.product.findMany();
   }
+  async findAllCategories() {
+    return this.prisma.productCategory.findMany({
+      include: {
+        products: true,
+      },
+    });
+  }
   async findById(id: string) {
     return this.prisma.product.findUnique({
       where: { id },
