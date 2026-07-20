@@ -8,7 +8,10 @@ import {
   Put,
 } from '@nestjs/common';
 import { ProductService } from '../services/product.service';
-import { GetProductResponseDto } from '../dto/get-response.dto';
+import {
+  GetProductCategoriesDto,
+  GetProductResponseDto,
+} from '../dto/get-response.dto';
 import { CreateProductDto } from '../dto/create-product.dto';
 
 @Controller('products')
@@ -18,6 +21,11 @@ export class ProductsController {
   @Get()
   async findAllProducts(): Promise<GetProductResponseDto[]> {
     return await this.productService.findAllProducts();
+  }
+
+  @Get('productcategories')
+  async findAllCategories(): Promise<GetProductCategoriesDto[]> {
+    return await this.productService.findAllProductCategories();
   }
 
   @Get('/:id')
