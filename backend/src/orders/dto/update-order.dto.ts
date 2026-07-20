@@ -13,21 +13,22 @@ export class UpdateOrderDto {
   @IsEnum(OrderStatus)
   @IsOptional()
   status?: OrderStatus;
+
+  @IsEnum(PaymentStatus)
+  @IsOptional()
+  paymentStatus?: PaymentStatus;
   @IsString()
   @IsOptional()
   customerName?: string;
+
   @IsEnum(OrderType)
   @IsOptional()
-  orderType?: OrderType 
-  
-  @IsEnum(PaymentStatus)
-  @IsOptional()
-  paymentStatus?: PaymentStatus 
-  
+  orderType?: OrderType;
+
   @IsDateString()
   @IsOptional()
   pickupDate?: string;
-  
+
   @IsArray()
   @IsOptional()
   @ValidateNested({ each: true })

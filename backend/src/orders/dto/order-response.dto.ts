@@ -8,7 +8,7 @@ export class OrderResponseDto {
   status!: OrderStatus;
   paymentStatus!: PaymentStatus;
   orderType!: OrderType;
-  pickupDate!: string
+  pickupDate!: Date | null;
   createdAt!: Date;
   updatedAt!: Date;
 }
