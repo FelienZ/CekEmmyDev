@@ -8,7 +8,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const pempekCategory = await prisma.productCategory.upsert({
+  await prisma.productCategory.upsert({
     where: {
       name: 'Pempek',
     },
@@ -17,8 +17,16 @@ async function main() {
       name: 'Pempek',
     },
   });
-
-  const minumanCategory = await prisma.productCategory.upsert({
+  await prisma.productCategory.upsert({
+    where: {
+      name: 'Makanan Ringan',
+    },
+    update: {},
+    create: {
+      name: 'Makanan Ringan',
+    },
+  });
+  await prisma.productCategory.upsert({
     where: {
       name: 'Minuman',
     },
@@ -26,39 +34,6 @@ async function main() {
     create: {
       name: 'Minuman',
     },
-  });
-
-  await prisma.product.createMany({
-    data: [
-      {
-        name: 'Pempek Kapal Selam',
-        price: 9000,
-        stock: 100,
-        isAvailable: true,
-        categoryId: pempekCategory.categoryId,
-      },
-      {
-        name: 'Pempek Lenjer',
-        price: 1500,
-        stock: 100,
-        isAvailable: true,
-        categoryId: pempekCategory.categoryId,
-      },
-      {
-        name: 'Tekwan',
-        price: 9000,
-        stock: 50,
-        isAvailable: true,
-        categoryId: pempekCategory.categoryId,
-      },
-      {
-        name: 'Es Teh',
-        price: 5000,
-        stock: 200,
-        isAvailable: true,
-        categoryId: minumanCategory.categoryId,
-      },
-    ],
   });
 }
 
