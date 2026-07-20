@@ -9,6 +9,9 @@ export class ProductService {
   async findAllProducts() {
     return await this.productRepository.findAll();
   }
+  async findAllProductCategories() {
+    return await this.productRepository.findAllCategories();
+  }
   async findProductById(id: string) {
     const product = await this.productRepository.findById(id);
     if (!product) {
