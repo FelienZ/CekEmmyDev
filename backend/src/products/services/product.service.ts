@@ -24,6 +24,9 @@ export class ProductService {
   }
   async createProduct(payload: CreateProductDto) {
     const { categoryId, ...productData } = payload;
+    if (productData.stock > 0) {
+      productData.isAvailable = true;
+    }
     const finalPayload = {
       ...productData,
       productCategory: {

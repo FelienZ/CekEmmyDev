@@ -20,7 +20,10 @@ export class CreateProductDto {
   @IsString()
   @IsNotEmpty({ message: 'ID Kategori tidak boleh kosong' })
   categoryId!: string;
+  @IsString()
+  @IsOptional()
+  description?: string;
   @IsBoolean()
   @IsOptional()
-  isAvailable!: boolean;
+  isAvailable?: boolean;
 }
