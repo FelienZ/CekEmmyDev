@@ -1,9 +1,9 @@
 "use client"
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orderServices } from "../services/orderServices";
-import { UpdateOrder } from "@/types/payload";
 import { PaymentStatus } from '../../types/order';
+import { UpdateOrderPayload } from "@/types/payload";
 
 export function useGetOrders(){
     return useQuery({
@@ -12,10 +12,10 @@ export function useGetOrders(){
     })
 }
 
-export function useGetOrderById(id: string){
+export function useGetOrderById(id?: string){
     return useQuery({
-        queryKey: ["orders", id],
-        queryFn: () => orderServices.getOrderById,
+        queryKey: ["order", id],
+        queryFn: id? () => orderServices.getOrderById(id) : skipToken,
     })
 }
 
@@ -34,10 +34,10 @@ export function useMakeOrder(){
 export function useUpdateOrder(){
     const queryClient = useQueryClient()
     return useMutation({
-        mutationFn: ({id, payload}:{id: string, payload: UpdateOrder})=>  orderServices.updateOrder(id, payload),
+        mutationFn: ({id, payload}:{id: string, payload: UpdateOrderPayload})=>  orderServices.updateOrder(id, payload),
         onSuccess: async (_, args)=>{
             await queryClient.invalidateQueries({queryKey: ["orders"]})
-            await queryClient.invalidateQueries({queryKey: ["orders", args.id]})
+            await queryClient.invalidateQueries({queryKey: ["order", args.id]})
         }
     })
 }

@@ -1,7 +1,8 @@
 "use client"
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { productServices } from "../services/productServices";
+import { UpdateProductPayload } from "@/types/payload";
 
 export function useGetProducts(){
     return useQuery({
@@ -17,10 +18,10 @@ export function useGetProductCategories(){
     })
 }
 
-export function useGetProductById(id: string){
+export function useGetProductById(id?: string){
     return useQuery({
-        queryKey: ["products", id],
-        queryFn: () => productServices.getProductById(id),
+        queryKey: ["product", id],
+        queryFn: id? () => productServices.getProductById(id) : skipToken,
     })
 }
 
@@ -30,6 +31,27 @@ export function useCreateProduct(){
         mutationFn: productServices.createProduct,
         onSuccess: async ()=> {
             await queryClient.invalidateQueries({queryKey: ["products"]})
+        }
+    })
+}
+
+export function useUpdateProduct(){
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: ({id, payload}:{id: string, payload: UpdateProductPayload}) => productServices.updateProduct(id, payload),
+        onSuccess: async (_, args)=>{
+            queryClient.invalidateQueries({queryKey: ["products"]})
+            queryClient.invalidateQueries({queryKey: ["product", args.id]})
+        }
+    })
+}
+
+export function useDeleteProduct(){
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: (id:string ) => productServices.deleteProduct(id),
+        onSuccess: async() => {
+            queryClient.invalidateQueries({queryKey: ["products"]})
         }
     })
 }
