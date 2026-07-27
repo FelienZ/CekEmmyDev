@@ -1,5 +1,5 @@
 import { Order } from "@/types/order"
-import { CreateOrder, UpdateOrder } from "@/types/payload"
+import { CreateOrderPayload, UpdateOrderPayload } from "@/types/payload"
 import axios from "axios"
 import { PaymentStatus } from '../../types/order';
 
@@ -14,11 +14,11 @@ export const orderServices = {
         const response = await axios.get(`${baseUrl}/${id}`)
         return response.data
     },
-    createOrder: async(payload: CreateOrder)=>{
+    createOrder: async(payload: CreateOrderPayload)=>{
         const response = await axios.post(`${baseUrl}`, payload)
         return response
     },
-    updateOrder: async(id: string, payload: UpdateOrder)=>{
+    updateOrder: async(id: string, payload: UpdateOrderPayload)=>{
         const response = await axios.put(`${baseUrl}/${id}`, payload)
         return response
     },
