@@ -1,3 +1,4 @@
+import z from "zod"
 import { Product } from "./product"
 
 export const OrderType = {
@@ -17,7 +18,8 @@ export const OrderStatus = {
 
 export const PaymentStatus = {
   UNPAID: 'UNPAID',
-  PAID: 'PAID'
+  PAID: 'PAID',
+  PARTIAL: 'PARTIAL'
 } as const
 
 export type OrderType = typeof OrderType[keyof typeof OrderType]
@@ -32,7 +34,7 @@ export interface Order {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   orderType: OrderType;
-  pickupDate: Date | null;
+  pickupDate: Date | null | string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,3 +47,29 @@ export interface OrderItem {
   subtotal: number;
   product: Product
 }
+
+export const CreateOrderSchema = z.object({
+  customerName: z.string().min(3, "Minimal 3 Karakter"),
+  pickupDate : z.coerce.date("Tanggal Wajib Dipilih").refine(d => {
+    const time = new Date()
+    time.setHours(0, 0, 0, 0)
+
+    return d >= time
+  }, "Tanggal Tidak Valid"),
+  paymentStatus: z.enum(PaymentStatus, {error: "Status Pembayaran Invalid"}),
+  orderType: z.enum(OrderType, {error: "Tipe Pemesanan Invalid"}),
+  status: z.enum(OrderStatus, {error: "Status Pengerjaan Invalid"}),
+  orderItems : z.object({
+    productId: z.string().nonempty("Id Produk Invalid"),
+    quantity: z.coerce.number().min(1, "Minimal 1 Item"),
+    preparedQuantity: z.coerce.number().min(0, "Progress Invalid").nullable(),
+    subtotal: z.coerce.number().nullable(),
+    product: z.object({
+      name: z.string().min(3, "Minimal 3 Karakter"),
+      price: z.coerce.number({ error: "Wajib diisi angka" }).min(0,"Harga Negatif Invalid"),
+      stock: z.coerce.number({ error: "Wajib diisi angka" }).min(0, "Stok Negatif Invalid"),
+      })
+  }).array().min(1)
+})
+
+export type CreateOrder = z.infer<typeof CreateOrderSchema>

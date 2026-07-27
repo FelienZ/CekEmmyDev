@@ -1,10 +1,10 @@
 import { OrderStatus, OrderType, PaymentStatus } from "./order"
 
-export interface UpdateOrder {
+export interface UpdateOrderPayload {
     customerName?: string,
     orderType?: OrderType,
     paymentStatus?: PaymentStatus,
-    pickupDate?: string,
+    pickupDate?: string | Date,
     status?: OrderStatus,
     orderItems?: {
         productId: string,
@@ -13,13 +13,29 @@ export interface UpdateOrder {
     }[]
 }
 
-export interface CreateOrder {
+export interface CreateOrderPayload {
     customerName: string,
     orderType?: OrderType,
     paymentStatus?: PaymentStatus,
-    pickupDate?: string,
+    pickupDate?: string | Date,
     orderItems: {
         productId: string,
         quantity: number
     }[]
+}
+
+export interface CreateProductPayload{
+    name: string;
+    price: number;
+    stock: number;
+    description: string;
+    categoryId:string;
+}
+
+export interface UpdateProductPayload{
+    name: string;
+    price: number;
+    stock: number;
+    description: string;
+    categoryId:string;
 }
