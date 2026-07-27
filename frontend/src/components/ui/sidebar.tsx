@@ -24,6 +24,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { PanelLeftIcon } from "lucide-react";
+import Image from "next/image";
+import CompanyLogo from "../custom/company-logo";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -252,10 +254,12 @@ function Sidebar({
 }
 
 function SidebarTrigger({
-  className,
-  onClick,
+  logoUrl,
   ...props
-}: React.ComponentProps<typeof Button>) {
+}: {
+  logoUrl: string;
+  props: React.ComponentProps<typeof Button>;
+}) {
   const { toggleSidebar } = useSidebar();
 
   return (
@@ -263,15 +267,15 @@ function SidebarTrigger({
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
       variant="ghost"
-      size="icon-sm"
-      className={cn(className)}
+      size="icon-xl"
+      className={cn(props.props.className)}
       onClick={(event) => {
-        onClick?.(event);
+        props.props.onClick?.(event);
         toggleSidebar();
       }}
       {...props}
     >
-      <PanelLeftIcon />
+      <CompanyLogo logoUrl={logoUrl ?? "/logo"} />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );
