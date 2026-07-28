@@ -22,6 +22,10 @@ export const orderServices = {
         const response = await axios.put(`${baseUrl}/${id}`, payload)
         return response
     },
+    markAsCompleted: async(id: string) => {
+        const response = await axios.patch(`${baseUrl}/${id}/status`)
+        return response
+    },
     updatePaymentStatus: async(id: string, payload: PaymentStatus)=>{
         const response = await axios.patch(`${baseUrl}/${id}/payment`, {paymentStatus: payload})
         return response
