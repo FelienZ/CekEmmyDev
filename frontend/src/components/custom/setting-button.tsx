@@ -16,11 +16,18 @@ export function SettingButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="rounded-sm">
+        <Button
+          variant="outline"
+          className="rounded-sm bg-sidebar-accent text-white"
+        >
           <Menu className="size-5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={18} className="w-48">
+      <DropdownMenuContent
+        align="end"
+        sideOffset={18}
+        className="w-48 bg-sidebar text-background dark:text-white"
+      >
         <DropdownMenuGroup>
           <DropdownMenuLabel>App Menu</DropdownMenuLabel>
           <DropdownMenuItem>
