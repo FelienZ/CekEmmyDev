@@ -255,9 +255,13 @@ function Sidebar({
 
 function SidebarTrigger({
   logoUrl,
+  loading,
+  priority,
   ...props
 }: {
   logoUrl: string;
+  loading?: "lazy" | "eager";
+  priority?: boolean;
   props: React.ComponentProps<typeof Button>;
 }) {
   const { toggleSidebar } = useSidebar();
@@ -275,7 +279,11 @@ function SidebarTrigger({
       }}
       {...props}
     >
-      <CompanyLogo logoUrl={logoUrl ?? "/logo"} />
+      <CompanyLogo
+        loading={loading}
+        priority={priority}
+        logoUrl={logoUrl ?? "/logo"}
+      />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );
