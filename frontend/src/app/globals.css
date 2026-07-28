@@ -46,100 +46,144 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* regist baru */
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
 }
 
 :root {
-  /* ⚪ AREA UTAMA: Tetap Putih Bersih & Minimalis */
-  --background: oklch(0.99 0.003 150);                  /* Putih murni dengan sedikit tint sage super soft */
-  --foreground: oklch(0.145 0 0);                      /* Teks utama: Hitam arang agar kontras di latar putih */
+
+  --background: oklch(0.99 0.003 150);
+  --foreground: oklch(0.145 0 0);
+
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
+
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  
-  /* 🟢 AKSEN UTAMA: Hijau Emerald Medium untuk Tombol/Badge Aktif di area putih */
-  --primary: oklch(0.45 0.12 150);                     
+
+  --primary: oklch(0.45 0.12 150);
   --primary-foreground: oklch(0.985 0 0);
-  
-  --secondary: oklch(0.95 0.02 150);                 
-  --secondary-foreground: oklch(0.25 0.06 150);        
-  
+
+  --secondary: oklch(0.965 0.006 95);
+  --secondary-foreground: oklch(0.28 0.01 150);
+
   --muted: oklch(0.95 0.015 150);
-  --muted-foreground: oklch(0.55 0.01 150);
-  
-  --accent: oklch(0.95 0.02 150);
-  --accent-foreground: oklch(0.25 0.06 150);
-  
-  --destructive: oklch(0.577 0.245 27.325);            
-  --border: oklch(0.92 0.01 150);                     
+  --muted-foreground: oklch(0.56 0.01 150);
+
+  --accent: oklch(0.94 0.015 150);
+  --accent-foreground: oklch(0.25 0.05 150);
+
+  --border: oklch(0.92 0.01 150);
   --input: oklch(0.92 0.01 150);
-  --ring: oklch(0.45 0.12 150);                       
-  
-  --chart-1: oklch(0.45 0.12 150);
-  --chart-2: oklch(0.55 0.10 150);
-  --chart-3: oklch(0.65 0.08 150);
-  --chart-4: oklch(0.35 0.08 150);
-  --chart-5: oklch(0.25 0.06 150);
-  
+
+  --ring: var(--primary);
+
+  --info: oklch(0.62 0.16 250);
+  --info-foreground: oklch(0.985 0 0);
+
+
+  --success: oklch(0.67 0.16 150);
+  --success-foreground: oklch(0.985 0 0);
+
+  --warning: oklch(0.83 0.16 88);
+  --warning-foreground: oklch(0.22 0.02 88);
+
+  --danger: oklch(0.63 0.23 28);
+  --danger-foreground: oklch(0.985 0 0);
+
+  --destructive: var(--danger);
+
+  --chart-1: var(--primary);
+  --chart-2: var(--info);
+  --chart-3: var(--warning);
+  --chart-4: var(--success);
+  --chart-5: var(--danger);
+
   --radius: 0.625rem;
-  
-  /* =======================================================
-     🌲 SIDEBAR & HEADER: Hijau Gelap (*Deep Forest Green*)
-     ======================================================= */
-  --sidebar: oklch(0.25 0.06 150);                     /* 🎯 Kunci: Hijau Gelap nan Mewah */
-  --sidebar-foreground: oklch(0.985 0 0);              /* 🎯 Kunci FIX TEXT: Teks otomatis jadi Putih Murni */
-  
-  --sidebar-primary: oklch(0.45 0.12 150);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  
-  --sidebar-accent: oklch(0.32 0.05 150);              /* Warna saat menu sidebar di-hover (hijau agak muda sedikit) */
+
+  --sidebar: oklch(0.25 0.06 150);
+  --sidebar-foreground: oklch(0.985 0 0);
+
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+
+  --sidebar-accent: oklch(0.31 0.05 150);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  
-  --sidebar-border: oklch(0.32 0.04 150);              /* Border tipis bernuansa hijau gelap */
-  --sidebar-ring: oklch(0.45 0.12 150);
+
+  --sidebar-border: oklch(0.32 0.04 150);
+  --sidebar-ring: var(--primary);
 }
 
 .dark {
-  /* ⚫ DARK MODE: Nyaman untuk operasional kasir di malam hari */
-  --background: oklch(0.145 0 0);                      
-  --foreground: oklch(0.985 0 0);                      
-  --card: oklch(0.18 0.01 150);                      
+
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+
+  --card: oklch(0.18 0.01 150);
   --card-foreground: oklch(0.985 0 0);
+
   --popover: oklch(0.18 0.01 150);
   --popover-foreground: oklch(0.985 0 0);
-  
-  --primary: oklch(0.70 0.12 150);                     /* Hijau Mint cerah agar kontras saat gelap */
-  --primary-foreground: oklch(0.12 0.03 150);          
-  
-  --secondary: oklch(0.22 0.01 150);                   
-  --secondary-foreground: oklch(0.95 0.01 150);
-  
+
+  --primary: oklch(0.72 0.13 150);
+  --primary-foreground: oklch(0.12 0.03 150);
+
+  --secondary: oklch(0.24 0.008 150);
+  --secondary-foreground: oklch(0.95 0 0);
+
   --muted: oklch(0.22 0.01 150);
-  --muted-foreground: oklch(0.65 0.01 150);
-  
-  --accent: oklch(0.22 0.01 150);
-  --accent-foreground: oklch(0.95 0.01 150);
-  
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.70 0.12 150);
-  
-  --chart-1: oklch(0.70 0.12 150);
-  --chart-2: oklch(0.58 0.10 150);
-  --chart-3: oklch(0.48 0.08 150);
-  --chart-4: oklch(0.38 0.06 150);
-  --chart-5: oklch(0.85 0.08 150);
-  
-  /* SIDEBAR & HEADER DI DARK MODE */
-  --sidebar: oklch(0.18 0.01 150);                     /* Menyesuaikan dengan kepekatan dark mode */
+  --muted-foreground: oklch(0.66 0.01 150);
+
+  --accent: oklch(0.26 0.012 150);
+  --accent-foreground: oklch(0.985 0 0);
+
+  --border: oklch(0.30 0.01 150);
+  --input: oklch(0.30 0.01 150);
+
+  --ring: var(--primary);
+
+  --info: oklch(0.74 0.15 250);
+  --info-foreground: oklch(0.15 0.01 250);
+
+  --success: oklch(0.78 0.16 150);
+  --success-foreground: oklch(0.15 0.01 150);
+
+  --warning: oklch(0.86 0.15 90);
+  --warning-foreground: oklch(0.20 0.01 90);
+
+  --danger: oklch(0.72 0.20 28);
+  --danger-foreground: oklch(0.15 0 0);
+
+  --destructive: var(--danger);
+
+  --chart-1: var(--primary);
+  --chart-2: var(--info);
+  --chart-3: var(--warning);
+  --chart-4: var(--success);
+  --chart-5: var(--danger);
+
+  --sidebar: oklch(0.18 0.01 150);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.70 0.12 150);
-  --sidebar-primary-foreground: oklch(0.12 0.03 150);
-  --sidebar-accent: oklch(0.22 0.01 150);
+
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+
+  --sidebar-accent: oklch(0.24 0.01 150);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.70 0.12 150);
+
+  --sidebar-border: oklch(0.30 0.01 150);
+  --sidebar-ring: var(--primary);
 }
 
 @layer base {
