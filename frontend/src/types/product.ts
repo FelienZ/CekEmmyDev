@@ -22,7 +22,7 @@ export const CreateProductSchema = z.object({
   name: z.string().min(3, "Nama Produk Minimal 3 Karakter"),
   price: z.coerce.number({ error: "Wajib diisi dengan angka" }).min(0,"Harga Tidak Boleh Negatif"),
   stock: z.coerce.number({ error: "Wajib diisi dengan angka" }).min(0, "Stok Tidak Boleh Negatif"),
-  description: z.string(),
+  description: z.string().optional(),
   categoryId: z.string({error: "Kategori Invalid"}),
 });
 

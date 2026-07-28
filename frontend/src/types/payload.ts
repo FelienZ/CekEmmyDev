@@ -28,7 +28,7 @@ export interface CreateProductPayload{
     name: string;
     price: number;
     stock: number;
-    description: string;
+    description?: string;
     categoryId:string;
 }
 
@@ -36,6 +36,6 @@ export interface UpdateProductPayload{
     name: string;
     price: number;
     stock: number;
-    description: string;
+    description?: string;
     categoryId:string;
 }

@@ -53,7 +53,6 @@ export const CreateOrderSchema = z.object({
   pickupDate : z.coerce.date("Tanggal Wajib Dipilih").refine(d => {
     const time = new Date()
     time.setHours(0, 0, 0, 0)
-
     return d >= time
   }, "Tanggal Tidak Valid"),
   paymentStatus: z.enum(PaymentStatus, {error: "Status Pembayaran Invalid"}),
@@ -62,8 +61,8 @@ export const CreateOrderSchema = z.object({
   orderItems : z.object({
     productId: z.string().nonempty("Id Produk Invalid"),
     quantity: z.coerce.number().min(1, "Minimal 1 Item"),
-    preparedQuantity: z.coerce.number().min(0, "Progress Invalid").nullable(),
-    subtotal: z.coerce.number().nullable(),
+    preparedQuantity: z.coerce.number().min(0, "Progress Invalid").optional(),
+    subtotal: z.coerce.number().optional(),
     product: z.object({
       name: z.string().min(3, "Minimal 3 Karakter"),
       price: z.coerce.number({ error: "Wajib diisi angka" }).min(0,"Harga Negatif Invalid"),
