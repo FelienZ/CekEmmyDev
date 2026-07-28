@@ -4,6 +4,8 @@ import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/reac
 import { orderServices } from "../services/orderServices";
 import { PaymentStatus } from '../../types/order';
 import { UpdateOrderPayload } from "@/types/payload";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
 
 export function useGetOrders(){
     return useQuery({
@@ -42,13 +44,28 @@ export function useUpdateOrder(){
     })
 }
 
+export function useMarkCompleted(){
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: (id: string) => orderServices.markAsCompleted(id),
+        onSuccess: async(data, args) => {
+            await queryClient.invalidateQueries({queryKey: ["orders"]})
+            await queryClient.invalidateQueries({queryKey: ["order", args]})
+            toast.success(data.data?.message)
+        },
+        onError: (data: AxiosError<{message: string}>)=>{
+            toast.error(data.response?.data.message)
+        }
+    })
+}
+
 export function useUpdatePaymentStatus (){
     const queryClient = useQueryClient()
     return useMutation({
         mutationFn: ({id, payload}:{id: string, payload: PaymentStatus})=>  orderServices.updatePaymentStatus(id, payload),
         onSuccess: async (_, args)=>{
             await queryClient.invalidateQueries({queryKey: ["orders"]})
-            await queryClient.invalidateQueries({queryKey: ["orders", args.id]})
+            await queryClient.invalidateQueries({queryKey: ["order", args.id]})
         }
     })
 }
@@ -57,8 +74,12 @@ export function useDeleteOrder(){
     const queryClient = useQueryClient()
     return useMutation({
         mutationFn: (id: string) => orderServices.deleteOrder(id),
-        onSuccess: async ()=> {
+        onSuccess: async (data)=> {
             await queryClient.invalidateQueries({queryKey: ["orders"]})
+        toast.success(data.data?.message)
+        },
+        onError: (data)=>{
+            toast.error(data.message)
         }
     })
 }
