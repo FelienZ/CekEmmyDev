@@ -3,6 +3,7 @@ import {
   IsDateString,
   IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
@@ -27,6 +28,10 @@ export class CreateOrderDto {
   @IsEnum(PaymentStatus)
   @IsOptional()
   paymentStatus?: PaymentStatus;
+
+  @IsNumber()
+  @IsOptional()
+  paidAmount?: number;
 
   @IsDateString()
   @IsOptional()

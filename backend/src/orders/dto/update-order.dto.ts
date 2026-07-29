@@ -2,6 +2,7 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
@@ -28,6 +29,10 @@ export class UpdateOrderDto {
   @IsDateString()
   @IsOptional()
   pickupDate?: string;
+
+  @IsNumber()
+  @IsOptional()
+  paidAmount?: number;
 
   @IsArray()
   @IsOptional()
