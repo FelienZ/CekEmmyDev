@@ -43,6 +43,15 @@ export class OrdersRepository {
     });
     return order;
   }
+  async updateOrderStatusAsCompleted(id: string) {
+    const order = await this.prisma.order.update({
+      where: { id },
+      data: {
+        status: 'COMPLETED',
+      },
+    });
+    return order;
+  }
   async updatePaymentStatus(id: string, data: PaymentStatus) {
     const order = await this.prisma.order.update({
       where: { id },
