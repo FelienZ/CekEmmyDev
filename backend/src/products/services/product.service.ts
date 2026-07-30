@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ProductRepository } from '../repositories/product.repository';
 import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
+import Slugify from '@/helper/slugify';
 
 @Injectable()
 export class ProductService {
@@ -29,6 +30,7 @@ export class ProductService {
     }
     const finalPayload = {
       ...productData,
+      slug: Slugify(productData.name),
       productCategory: {
         connect: { categoryId },
       },
