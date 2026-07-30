@@ -8,7 +8,7 @@ import { OrderResponseDto } from '../dto/order-response.dto';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { ProductRepository } from '@/products/repositories/product.repository';
 import { UpdateOrderDto } from '../dto/update-order.dto';
-import { OrderStatus, OrderType, PaymentStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 @Injectable()
 export class OrdersService {
@@ -27,39 +27,71 @@ export class OrdersService {
     return order;
   }
   async createOrder(order: CreateOrderDto): Promise<string> {
+    if (order.orderItems.length === 0) {
+      throw new BadRequestException('Invalid Empty Order Items');
+    }
     const productIds = order.orderItems.map((item) => item.productId);
     const products = await this.productRepository.findManyByIds(productIds);
+    const foundIds = new Set(products.map((p) => p.id));
+    const missingIds = productIds.filter((i) => !foundIds.has(i));
     if (products.length !== productIds.length) {
-      throw new NotFoundException('One or more products not found');
+      throw new NotFoundException(
+        `Products not found: ${missingIds.join(', ')}`,
+      );
     }
+    /* Perhitungan bisnis: hitung total harga, subTotal item, dkk. */
+    const productMap = new Map(products.map((p) => [p.id, p])); // model product key-value
     const eachOrderItem = order.orderItems.map((item) => {
-      const product = products.find((p) => p.id === item.productId);
-      if (!product) {
-        throw new NotFoundException(
-          `Product with ID ${item.productId} not found`,
-        );
+      const product = productMap.get(item.productId)!;
+      //skip tolak < stok, kmungkinan butuh catat lebih
+      if (item.quantity <= 0) {
+        throw new BadRequestException('Invalid Order Item Quantity');
       }
-      const price = product.price;
       return {
         quantity: item.quantity,
-        priceSnapshot: price,
+        priceSnapshot: product.price,
+        subtotal: product.price * item.quantity,
         product: {
           connect: { id: item.productId },
         },
-        subtotal: price * item.quantity,
       };
     });
+    const totalAmount = eachOrderItem.reduce(
+      (sum, item) => sum + item.subtotal,
+      0,
+    );
+    let paymentStatus = order.paymentStatus;
+    if (Number(order.paidAmount) < 0) {
+      throw new BadRequestException('Invalid paidAmount, non-negative');
+    }
+    if (Number(order.paidAmount) > totalAmount) {
+      throw new BadRequestException('Invalid paidAmount, above total');
+    }
+    if (order.paidAmount === totalAmount) {
+      paymentStatus = PaymentStatus.PAID;
+    } else if (order.paidAmount === 0) {
+      paymentStatus = PaymentStatus.UNPAID;
+    } else {
+      paymentStatus = PaymentStatus.PARTIAL;
+    }
+    if (order.pickupDate) {
+      const datePickup = new Date(order.pickupDate);
+      datePickup.setHours(0, 0, 0, 0);
+      const currentTime = new Date();
+      currentTime.setHours(0, 0, 0, 0);
+      if (datePickup < currentTime) {
+        throw new BadRequestException('Invalid pickupDate, below currentTime');
+      }
+    }
     const finalOrder = {
-      customerName: order.customerName,
-      totalAmount: eachOrderItem.reduce((sum, item) => sum + item.subtotal, 0),
+      ...order,
+      totalAmount: totalAmount,
       orderItems: {
         create: eachOrderItem,
       },
-      // status: OrderStatus.PENDING,
-      // paymentStatus: PaymentStatus.UNPAID,
-      pickupDate: order.pickupDate ? new Date(order.pickupDate) : null,
-      orderType: order.orderType || OrderType.TAKEAWAY,
-      paymentStatus: order.paymentStatus || PaymentStatus.UNPAID,
+      pickupDate: order.pickupDate ? new Date(order.pickupDate) : new Date(),
+      paymentStatus,
+      orderType: order.orderType,
     };
     const createdOrder = await this.ordersRepository.create(finalOrder);
     return createdOrder.id;
@@ -78,59 +110,169 @@ export class OrdersService {
         'Completed/Cancelled orders cannot be updated',
       );
     }
-    const updatedOrder = {
-      customerName: order.customerName || existingOrder.customerName,
-      status: order.status || existingOrder.status,
-      paymentStatus: order.paymentStatus || existingOrder.paymentStatus,
-      pickupDate: order.pickupDate
-        ? new Date(order.pickupDate)
-        : existingOrder.pickupDate,
-    };
+    if (order.pickupDate) {
+      const pickupDate = new Date(order.pickupDate);
+      pickupDate.setHours(0, 0, 0, 0);
+      const currentTime = new Date();
+      currentTime.setHours(0, 0, 0, 0);
+      if (pickupDate < currentTime) {
+        throw new BadRequestException('Invalid pickupDate, below current Date');
+      }
+    }
+    if (
+      /* misal ada di payload, harusnya existing ada */
+      (!order.orderItems || order.orderItems?.length === 0) &&
+      existingOrder.orderItems.length === 0
+    ) {
+      throw new BadRequestException('Invalid Order Items, at least 1 product');
+    }
+
+    let paymentStatus = order.paymentStatus;
+    let currentStatus = existingOrder.status;
+
     const productIds = order.orderItems?.map((item) => item.productId);
-    if (!productIds || productIds.length === 0) {
-      await this.ordersRepository.update(id, updatedOrder);
-      return id;
-    }
-    const products = await this.productRepository.findManyByIds(productIds);
-    if (products.length !== productIds.length) {
-      throw new NotFoundException('One or more products not found');
-    }
-    const eachOrderItem = order.orderItems?.map((item) => {
-      const product = products.find((p) => p.id === item.productId);
-      if (!product) {
+    /* Kalau ada perubahan di items */
+    if (productIds && productIds.length > 0) {
+      const products = await this.productRepository.findManyByIds(productIds);
+      const foundIds = new Set(products.map((p) => p.id));
+      const missingIds = productIds.filter((i) => !foundIds.has(i));
+      if (products.length !== productIds.length) {
         throw new NotFoundException(
-          `Product with ID ${item.productId} not found`,
+          `Products not found: ${missingIds.join(', ')}`,
         );
       }
-      return {
-        quantity: item.quantity,
-        preparedQuantity: item.preparedQuantity ?? 0,
-        priceSnapshot: product.price,
-        product: {
-          connect: { id: item.productId },
+      if (products.length !== productIds.length) {
+        throw new NotFoundException('One or more products not found');
+      }
+      const productMap = new Map(products.map((p) => [p.id, p]));
+      const eachOrderItem = order.orderItems?.map((item) => {
+        const product = productMap.get(item.productId)!;
+        if (item.quantity <= 0) {
+          throw new BadRequestException('Invalid Order Item Quantity');
+        }
+        if (Number(item.preparedQuantity) < 0) {
+          throw new BadRequestException('Invalid Order Item preparedQuantity');
+        }
+        if (Number(item.preparedQuantity) > item.quantity) {
+          throw new BadRequestException(
+            'Invalid preparedQuantity, above ordered quantity',
+          );
+        }
+        return {
+          quantity: item.quantity,
+          preparedQuantity: item.preparedQuantity,
+          priceSnapshot: product.price,
+          product: {
+            connect: { id: item.productId },
+          },
+          subtotal: product.price * item.quantity,
+        };
+      });
+      /* Validasi Status pembayaran */
+      const newTotalAmount = eachOrderItem?.reduce((a, v) => a + v.subtotal, 0);
+      if (Number(order.paidAmount) < 0) {
+        throw new BadRequestException('Invalid paidAmount, non-negative');
+      }
+      if (Number(order.paidAmount) > Number(newTotalAmount)) {
+        throw new BadRequestException('Invalid paidAmount, above total');
+      }
+      if (order.paidAmount === Number(newTotalAmount)) {
+        paymentStatus = PaymentStatus.PAID;
+      } else if (order.paidAmount === 0) {
+        paymentStatus = PaymentStatus.UNPAID;
+      } else {
+        paymentStatus = PaymentStatus.PARTIAL;
+      }
+      const isReady = eachOrderItem?.every(
+        (o) => Number(o.preparedQuantity) === Number(o.quantity),
+      );
+      const isOnProgress = eachOrderItem?.some(
+        (o) => Number(o.preparedQuantity) > 0,
+      );
+      if (isReady) {
+        currentStatus = OrderStatus.READY;
+      } else if (isOnProgress) {
+        currentStatus = OrderStatus.PREPARING;
+      } else {
+        currentStatus = OrderStatus.PENDING;
+      }
+
+      /* orderItems baru -> timpa yang lama */
+      const finalupdate = {
+        ...order,
+        pickupDate: order.pickupDate ? new Date(order.pickupDate) : undefined,
+        paymentStatus: paymentStatus,
+        status: currentStatus,
+        totalAmount: newTotalAmount,
+        orderItems: {
+          deleteMany: {},
+          create: eachOrderItem,
         },
-        subtotal: product.price * item.quantity,
       };
-    });
-    const finalUpdateOrder = {
-      ...updatedOrder,
-      totalAmount: eachOrderItem
-        ? eachOrderItem.reduce((sum, item) => sum + item.subtotal, 0)
-        : existingOrder.totalAmount,
-      orderItems: {
-        deleteMany: {},
-        create: eachOrderItem,
-      },
+      await this.ordersRepository.update(id, finalupdate);
+    }
+    /* Case Kalau tidak ada perubahan item */
+    const totalAmount = existingOrder.orderItems?.reduce(
+      (a, v) => a + v.subtotal,
+      0,
+    );
+    if (Number(order.paidAmount) < 0) {
+      throw new BadRequestException('Invalid paidAmount, non-negative');
+    }
+    if (Number(order.paidAmount) > Number(totalAmount)) {
+      throw new BadRequestException('Invalid paidAmount, above total');
+    }
+    if (order.paidAmount === Number(totalAmount)) {
+      paymentStatus = PaymentStatus.PAID;
+    } else if (order.paidAmount === 0) {
+      paymentStatus = PaymentStatus.UNPAID;
+    } else {
+      paymentStatus = PaymentStatus.PARTIAL;
+    }
+    const isReady = existingOrder.orderItems?.every(
+      (o) => Number(o.preparedQuantity) === Number(o.quantity),
+    );
+    const isOnProgress = existingOrder.orderItems?.some(
+      (o) => Number(o.preparedQuantity) > 0,
+    );
+    if (isReady) {
+      currentStatus = OrderStatus.READY;
+    } else if (isOnProgress) {
+      currentStatus = OrderStatus.PREPARING;
+    } else {
+      currentStatus = OrderStatus.PENDING;
+    }
+
+    const finalupdate = {
+      ...order,
+      pickupDate: order.pickupDate ? new Date(order.pickupDate) : undefined,
+      paymentStatus: paymentStatus,
+      status: currentStatus,
+      totalAmount: totalAmount,
+      orderItems: undefined,
     };
-    await this.ordersRepository.update(id, finalUpdateOrder);
-    return id;
+    await this.ordersRepository.update(id, finalupdate);
+    return 'Berhasil Memperbarui Pesanan';
   }
-  async updateStatus(id: string, status: OrderStatus): Promise<string> {
+  async updateStatusAsCompleted(id: string): Promise<string> {
     const existingOrder = await this.ordersRepository.findById(id);
     if (!existingOrder) throw new NotFoundException('Order not found');
-
-    await this.ordersRepository.update(id, { status });
-    return id;
+    if (existingOrder.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException(
+        'Gagal Memperbarui Status, Pesanan dibatalkan',
+      );
+    }
+    if (existingOrder.paymentStatus === PaymentStatus.UNPAID) {
+      throw new BadRequestException('Gagal Memperbarui Status, Belum dilunasi');
+    }
+    const notAllowedUpdate = existingOrder.orderItems.some(
+      (o) => o.preparedQuantity !== o.quantity,
+    );
+    if (notAllowedUpdate) {
+      throw new BadRequestException('Gagal Memperbarui Status, Belum Dipenuhi');
+    }
+    await this.ordersRepository.updateOrderStatusAsCompleted(id);
+    return 'Berhasil Memperbarui Status Pemesanan';
   }
   async updatePaymentStatus(
     id: string,
@@ -146,9 +288,10 @@ export class OrdersService {
     }
     await this.ordersRepository.updatePaymentStatus(id, paymentStatus);
 
-    return id;
+    return 'Berhasil Memperbarui Status Pembayaran';
   }
-  async deleteOrder(id: string): Promise<void> {
-    return this.ordersRepository.delete(id);
+  async deleteOrder(id: string): Promise<string> {
+    await this.ordersRepository.delete(id);
+    return 'Berhasil Menghapus Pesanan';
   }
 }
