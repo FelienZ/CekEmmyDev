@@ -30,7 +30,7 @@ export class OrdersController {
   ): Promise<{ message: string; data: { id: string } }> {
     const id = await this.ordersService.createOrder(order);
     return {
-      message: 'Order created successfully',
+      message: 'Order successfully created',
       data: { id },
     };
   }
@@ -39,9 +39,18 @@ export class OrdersController {
     @Param('id') id: string,
     @Body() order: UpdateOrderDto,
   ): Promise<{ message: string }> {
-    await this.ordersService.updateOrder(id, order);
+    const response = await this.ordersService.updateOrder(id, order);
     return {
-      message: 'Order updated successfully',
+      message: response,
+    };
+  }
+  @Patch('/:id/status')
+  async updateOrderStatusAsCompleted(
+    @Param('id') id: string,
+  ): Promise<{ message: string }> {
+    const response = await this.ordersService.updateStatusAsCompleted(id);
+    return {
+      message: response,
     };
   }
   @Patch('/:id/payment')
@@ -51,14 +60,14 @@ export class OrdersController {
   ): Promise<{ message: string }> {
     await this.ordersService.updatePaymentStatus(id, status);
     return {
-      message: 'Payment status updated successfully',
+      message: 'Payment status successfully updated',
     };
   }
   @Delete('/:id')
   async deleteOrder(@Param('id') id: string): Promise<{ message: string }> {
     await this.ordersService.deleteOrder(id);
     return {
-      message: 'Order deleted successfully',
+      message: 'Order successfully deleted',
     };
   }
 }
