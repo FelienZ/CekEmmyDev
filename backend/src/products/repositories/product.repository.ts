@@ -35,10 +35,13 @@ export class ProductRepository {
   async create(payload: Prisma.ProductCreateInput) {
     return this.prisma.product.create({
       data: payload,
+      select: {
+        id: true,
+      },
     });
   }
   async update(id: string, payload: Prisma.ProductUpdateInput) {
-    return this.prisma.product.update({
+    return await this.prisma.product.update({
       where: { id },
       data: payload,
     });
@@ -48,7 +51,7 @@ export class ProductRepository {
     client: Prisma.TransactionClient,
   ) {
     for (const change of changes) {
-      return client.product.update({
+      await client.product.update({
         where: { id: change.productId },
         data: {
           stock: {
