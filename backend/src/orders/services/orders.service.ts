@@ -9,12 +9,16 @@ import { CreateOrderDto } from '../dto/create-order.dto';
 import { ProductRepository } from '@/products/repositories/product.repository';
 import { UpdateOrderDto } from '../dto/update-order.dto';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { PrismaService } from 'prisma/prisma.service';
+import { OrdersHelper } from '../helper/orders.helper';
 
 @Injectable()
 export class OrdersService {
   constructor(
     private ordersRepository: OrdersRepository,
     private productRepository: ProductRepository,
+    private prisma: PrismaService,
+    private helper: OrdersHelper,
   ) {}
   async getOrders(): Promise<OrderResponseDto[]> {
     return this.ordersRepository.findall();
@@ -30,8 +34,9 @@ export class OrdersService {
     if (order.orderItems.length === 0) {
       throw new BadRequestException('Invalid Empty Order Items');
     }
-    const productIds = order.orderItems.map((item) => item.productId);
-    const products = await this.productRepository.findManyByIds(productIds);
+    const mergedItem = this.helper.normalizeOrderItems(order.orderItems);
+    const productIds = mergedItem.map((item) => item.productId); // ada 2 id sama blm termerge (merge dulu)
+    const products = await this.productRepository.findManyByIds(productIds); // hanya 1
     const foundIds = new Set(products.map((p) => p.id));
     const missingIds = productIds.filter((i) => !foundIds.has(i));
     if (products.length !== productIds.length) {
@@ -41,7 +46,7 @@ export class OrdersService {
     }
     /* Perhitungan bisnis: hitung total harga, subTotal item, dkk. */
     const productMap = new Map(products.map((p) => [p.id, p])); // model product key-value
-    const eachOrderItem = order.orderItems.map((item) => {
+    const eachOrderItem = mergedItem.map((item) => {
       const product = productMap.get(item.productId)!;
       //skip tolak < stok, kmungkinan butuh catat lebih
       if (item.quantity <= 0) {
@@ -130,7 +135,8 @@ export class OrdersService {
     let paymentStatus = order.paymentStatus;
     let currentStatus = existingOrder.status;
 
-    const productIds = order.orderItems?.map((item) => item.productId);
+    const mergedItems = this.helper.normalizeOrderItems(order.orderItems!);
+    const productIds = mergedItems?.map((item) => item.productId);
     /* Kalau ada perubahan di items */
     if (productIds && productIds.length > 0) {
       const products = await this.productRepository.findManyByIds(productIds);
@@ -145,7 +151,8 @@ export class OrdersService {
         throw new NotFoundException('One or more products not found');
       }
       const productMap = new Map(products.map((p) => [p.id, p]));
-      const eachOrderItem = order.orderItems?.map((item) => {
+      const changeData: { productId: string; change: number }[] = [];
+      const eachOrderItem = mergedItems?.map((item) => {
         const product = productMap.get(item.productId)!;
         if (item.quantity <= 0) {
           throw new BadRequestException('Invalid Order Item Quantity');
@@ -158,6 +165,10 @@ export class OrdersService {
             'Invalid preparedQuantity, above ordered quantity',
           );
         }
+        changeData.push({
+          productId: item.productId,
+          change: item.preparedQuantity || 0,
+        });
         return {
           quantity: item.quantity,
           preparedQuantity: item.preparedQuantity,
@@ -209,7 +220,15 @@ export class OrdersService {
           create: eachOrderItem,
         },
       };
-      await this.ordersRepository.update(id, finalupdate);
+      const stockChanges = this.helper.checkItemChanges(
+        existingOrder.orderItems,
+        changeData,
+      );
+      await this.prisma.$transaction(async (tx) => {
+        await this.productRepository.allocateProductStock(stockChanges, tx);
+        await this.ordersRepository.update(id, finalupdate, tx);
+      });
+      return 'Berhasil Memperbarui Pesanan';
     }
     /* Case Kalau tidak ada perubahan item */
     const totalAmount = existingOrder.orderItems?.reduce(
@@ -251,7 +270,7 @@ export class OrdersService {
       totalAmount: totalAmount,
       orderItems: undefined,
     };
-    await this.ordersRepository.update(id, finalupdate);
+    await this.ordersRepository.update(id, finalupdate, this.prisma);
     return 'Berhasil Memperbarui Pesanan';
   }
   async updateStatusAsCompleted(id: string): Promise<string> {
@@ -259,10 +278,15 @@ export class OrdersService {
     if (!existingOrder) throw new NotFoundException('Order not found');
     if (existingOrder.status === OrderStatus.CANCELLED) {
       throw new BadRequestException(
-        'Gagal Memperbarui Status, Pesanan dibatalkan',
+        'Unable to update status, order has cancelled ',
       );
     }
-    if (existingOrder.paymentStatus === PaymentStatus.UNPAID) {
+    if (existingOrder.status === OrderStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Unable to update status, order has completed ',
+      );
+    }
+    if (existingOrder.paidAmount !== existingOrder.totalAmount) {
       throw new BadRequestException('Gagal Memperbarui Status, Belum dilunasi');
     }
     const notAllowedUpdate = existingOrder.orderItems.some(

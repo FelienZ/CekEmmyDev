@@ -3,9 +3,10 @@ import { OrdersController } from './controllers/orders.controller';
 import { OrdersService } from './services/orders.service';
 import { OrdersRepository } from './repositories/orders.repository';
 import { ProductsModule } from '@/products/products.module';
+import { OrdersHelper } from './helper/orders.helper';
 @Module({
   imports: [ProductsModule],
   controllers: [OrdersController],
-  providers: [OrdersService, OrdersRepository],
+  providers: [OrdersService, OrdersRepository, OrdersHelper],
 })
 export class OrdersModule {}
