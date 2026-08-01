@@ -43,6 +43,21 @@ export class ProductRepository {
       data: payload,
     });
   }
+  async allocateProductStock(
+    changes: { productId: string; change: number }[],
+    client: Prisma.TransactionClient,
+  ) {
+    for (const change of changes) {
+      return client.product.update({
+        where: { id: change.productId },
+        data: {
+          stock: {
+            increment: change.change,
+          },
+        },
+      });
+    }
+  }
   async delete(id: string) {
     await this.prisma.product.delete({
       where: { id },
