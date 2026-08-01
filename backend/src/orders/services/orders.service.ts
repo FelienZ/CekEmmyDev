@@ -10,7 +10,8 @@ import { ProductRepository } from '@/products/repositories/product.repository';
 import { UpdateOrderDto } from '../dto/update-order.dto';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { PrismaService } from 'prisma/prisma.service';
-import { OrdersHelper } from '../helper/orders.helper';
+import { OrdersCalculator } from './orders-calculator.service';
+import { OrdersValidator } from './orders-validator.service';
 
 @Injectable()
 export class OrdersService {
@@ -18,7 +19,8 @@ export class OrdersService {
     private ordersRepository: OrdersRepository,
     private productRepository: ProductRepository,
     private prisma: PrismaService,
-    private helper: OrdersHelper,
+    private calculator: OrdersCalculator,
+    private validator: OrdersValidator,
   ) {}
   async getOrders(): Promise<OrderResponseDto[]> {
     return this.ordersRepository.findall();
@@ -34,70 +36,46 @@ export class OrdersService {
     if (order.orderItems.length === 0) {
       throw new BadRequestException('Invalid Empty Order Items');
     }
-    const mergedItem = this.helper.normalizeOrderItems(order.orderItems);
+    const mergedItem = this.calculator.mergeDuplicateItem(order.orderItems);
     const productIds = mergedItem.map((item) => item.productId); // ada 2 id sama blm termerge (merge dulu)
     const products = await this.productRepository.findManyByIds(productIds); // hanya 1
-    const foundIds = new Set(products.map((p) => p.id));
-    const missingIds = productIds.filter((i) => !foundIds.has(i));
-    if (products.length !== productIds.length) {
+    const isMissing = this.validator.isProductNotFound(products, productIds);
+    if (isMissing.length > 0) {
       throw new NotFoundException(
-        `Products not found: ${missingIds.join(', ')}`,
+        `Products not found: ${isMissing.join(', ')}`,
       );
     }
     /* Perhitungan bisnis: hitung total harga, subTotal item, dkk. */
-    const productMap = new Map(products.map((p) => [p.id, p])); // model product key-value
-    const eachOrderItem = mergedItem.map((item) => {
-      const product = productMap.get(item.productId)!;
-      //skip tolak < stok, kmungkinan butuh catat lebih
-      if (item.quantity <= 0) {
-        throw new BadRequestException('Invalid Order Item Quantity');
-      }
-      return {
-        quantity: item.quantity,
-        priceSnapshot: product.price,
-        subtotal: product.price * item.quantity,
-        product: {
-          connect: { id: item.productId },
-        },
-      };
-    });
-    const totalAmount = eachOrderItem.reduce(
+    const productMap = new Map(products.map((p) => [p.id, p]));
+    const orderItems = this.calculator.buildOrderItems(mergedItem, productMap);
+    const totalAmount = orderItems.reduce(
       (sum, item) => sum + item.subtotal,
       0,
     );
-    let paymentStatus = order.paymentStatus;
-    if (Number(order.paidAmount) < 0) {
-      throw new BadRequestException('Invalid paidAmount, non-negative');
-    }
-    if (Number(order.paidAmount) > totalAmount) {
-      throw new BadRequestException('Invalid paidAmount, above total');
-    }
-    if (order.paidAmount === totalAmount) {
-      paymentStatus = PaymentStatus.PAID;
-    } else if (order.paidAmount === 0) {
-      paymentStatus = PaymentStatus.UNPAID;
-    } else {
-      paymentStatus = PaymentStatus.PARTIAL;
-    }
+    this.validator.checkIsValidPaidAmount(
+      Number(order.paidAmount),
+      totalAmount,
+    );
+    let paymentStatus = order.paymentStatus || PaymentStatus.UNPAID;
+    paymentStatus = this.calculator.paymentStatusSetter(
+      Number(order.paidAmount),
+      totalAmount,
+      paymentStatus,
+    );
     if (order.pickupDate) {
-      const datePickup = new Date(order.pickupDate);
-      datePickup.setHours(0, 0, 0, 0);
-      const currentTime = new Date();
-      currentTime.setHours(0, 0, 0, 0);
-      if (datePickup < currentTime) {
-        throw new BadRequestException('Invalid pickupDate, below currentTime');
+      const isValidDate = this.validator.isValidDate(order.pickupDate);
+      if (!isValidDate) {
+        throw new BadRequestException(
+          'Tanggal Pengambilan di bawah hari ini Invalid',
+        );
       }
     }
-    const finalOrder = {
-      ...order,
-      totalAmount: totalAmount,
-      orderItems: {
-        create: eachOrderItem,
-      },
-      pickupDate: order.pickupDate ? new Date(order.pickupDate) : new Date(),
+    const finalOrder = this.calculator.buildFinalCreateOrder(
+      order,
+      orderItems,
+      totalAmount,
       paymentStatus,
-      orderType: order.orderType,
-    };
+    );
     const createdOrder = await this.ordersRepository.create(finalOrder);
     return createdOrder.id;
   }
@@ -107,21 +85,19 @@ export class OrdersService {
     if (!existingOrder) {
       throw new NotFoundException('Order not found');
     }
-    if (
-      existingOrder.status === OrderStatus.COMPLETED ||
-      existingOrder.status === OrderStatus.CANCELLED
-    ) {
+    const isInvalidUpdate = this.validator.isNotAllowedtoUpdate(
+      existingOrder.status,
+    );
+    if (isInvalidUpdate)
       throw new BadRequestException(
-        'Completed/Cancelled orders cannot be updated',
+        'Pesanan yang selesai/dibatalkan tidak dapat diubah',
       );
-    }
     if (order.pickupDate) {
-      const pickupDate = new Date(order.pickupDate);
-      pickupDate.setHours(0, 0, 0, 0);
-      const currentTime = new Date();
-      currentTime.setHours(0, 0, 0, 0);
-      if (pickupDate < currentTime) {
-        throw new BadRequestException('Invalid pickupDate, below current Date');
+      const isValidDate = this.validator.isValidDate(order.pickupDate);
+      if (!isValidDate) {
+        throw new BadRequestException(
+          'Tanggal Pengambilan di bawah hari ini Invalid',
+        );
       }
     }
     if (
@@ -129,129 +105,98 @@ export class OrdersService {
       (!order.orderItems || order.orderItems?.length === 0) &&
       existingOrder.orderItems.length === 0
     ) {
-      throw new BadRequestException('Invalid Order Items, at least 1 product');
+      throw new BadRequestException('Item Pesanan Invalid, minimal 1 buah');
     }
 
-    let paymentStatus = order.paymentStatus;
+    let paymentStatus = order.paymentStatus || PaymentStatus.UNPAID;
     let currentStatus = existingOrder.status;
 
-    const mergedItems = this.helper.normalizeOrderItems(order.orderItems!);
+    const mergedItems = this.calculator.mergeDuplicateItem(order.orderItems!);
     const productIds = mergedItems?.map((item) => item.productId);
+    const products = await this.productRepository.findManyByIds(productIds);
     /* Kalau ada perubahan di items */
     if (productIds && productIds.length > 0) {
-      const products = await this.productRepository.findManyByIds(productIds);
-      const foundIds = new Set(products.map((p) => p.id));
-      const missingIds = productIds.filter((i) => !foundIds.has(i));
-      if (products.length !== productIds.length) {
+      const isMissing = this.validator.isProductNotFound(products, productIds);
+      if (isMissing.length > 0) {
         throw new NotFoundException(
-          `Products not found: ${missingIds.join(', ')}`,
+          `Produk Tidak ditemukan: ${isMissing.join(', ')}`,
         );
       }
-      if (products.length !== productIds.length) {
-        throw new NotFoundException('One or more products not found');
-      }
+      // bandingkan payload.prepared dgn matchproduct
       const productMap = new Map(products.map((p) => [p.id, p]));
       const changeData: { productId: string; change: number }[] = [];
-      const eachOrderItem = mergedItems?.map((item) => {
-        const product = productMap.get(item.productId)!;
-        if (item.quantity <= 0) {
-          throw new BadRequestException('Invalid Order Item Quantity');
-        }
-        if (Number(item.preparedQuantity) < 0) {
-          throw new BadRequestException('Invalid Order Item preparedQuantity');
-        }
-        if (Number(item.preparedQuantity) > item.quantity) {
-          throw new BadRequestException(
-            'Invalid preparedQuantity, above ordered quantity',
-          );
-        }
-        changeData.push({
-          productId: item.productId,
-          change: item.preparedQuantity || 0,
-        });
-        return {
-          quantity: item.quantity,
-          preparedQuantity: item.preparedQuantity,
-          priceSnapshot: product.price,
-          product: {
-            connect: { id: item.productId },
-          },
-          subtotal: product.price * item.quantity,
-        };
-      });
-      /* Validasi Status pembayaran */
-      const newTotalAmount = eachOrderItem?.reduce((a, v) => a + v.subtotal, 0);
-      if (Number(order.paidAmount) < 0) {
-        throw new BadRequestException('Invalid paidAmount, non-negative');
-      }
-      if (Number(order.paidAmount) > Number(newTotalAmount)) {
-        throw new BadRequestException('Invalid paidAmount, above total');
-      }
-      if (order.paidAmount === Number(newTotalAmount)) {
-        paymentStatus = PaymentStatus.PAID;
-      } else if (order.paidAmount === 0) {
-        paymentStatus = PaymentStatus.UNPAID;
-      } else {
-        paymentStatus = PaymentStatus.PARTIAL;
-      }
-      const isReady = eachOrderItem?.every(
-        (o) => Number(o.preparedQuantity) === Number(o.quantity),
-      );
-      const isOnProgress = eachOrderItem?.some(
-        (o) => Number(o.preparedQuantity) > 0,
-      );
-      if (isReady) {
-        currentStatus = OrderStatus.READY;
-      } else if (isOnProgress) {
-        currentStatus = OrderStatus.PREPARING;
-      } else {
-        currentStatus = OrderStatus.PENDING;
-      }
+      if (order.orderItems) {
+        const OrderItems = this.calculator.buildOrderItems(
+          order.orderItems,
+          productMap,
+          changeData,
+        );
+        /* Validasi Status pembayaran */
+        const newTotalAmount = OrderItems?.reduce((a, v) => a + v.subtotal, 0);
+        this.validator.checkIsValidPaidAmount(
+          Number(order.paidAmount),
+          newTotalAmount,
+        );
+        paymentStatus = this.calculator.paymentStatusSetter(
+          Number(order.paidAmount),
+          newTotalAmount,
+          paymentStatus,
+        );
+        currentStatus = this.calculator.orderStatusSetter(
+          OrderItems,
+          currentStatus,
+        );
 
-      /* orderItems baru -> timpa yang lama */
-      const finalupdate = {
-        ...order,
-        pickupDate: order.pickupDate ? new Date(order.pickupDate) : undefined,
-        paymentStatus: paymentStatus,
-        status: currentStatus,
-        totalAmount: newTotalAmount,
-        orderItems: {
-          deleteMany: {},
-          create: eachOrderItem,
-        },
-      };
-      const stockChanges = this.helper.checkItemChanges(
-        existingOrder.orderItems,
-        changeData,
-      );
-      await this.prisma.$transaction(async (tx) => {
-        await this.productRepository.allocateProductStock(stockChanges, tx);
-        await this.ordersRepository.update(id, finalupdate, tx);
-      });
-      return 'Berhasil Memperbarui Pesanan';
+        /* orderItems baru -> timpa yang lama */
+        const finalupdate = this.calculator.buildFinalUpdateOrder(
+          order,
+          newTotalAmount,
+          paymentStatus,
+          currentStatus,
+          OrderItems,
+        );
+        const stockChanges = this.calculator.checkStockChange(
+          existingOrder.orderItems,
+          changeData,
+        );
+        // console.log('cek changes: ', stockChanges);
+        for (const p of stockChanges) {
+          const matchProduct = products.find((pr) => pr.id === p.productId);
+          if (matchProduct && matchProduct.stock < Number(-p?.change)) {
+            throw new BadRequestException(
+              'Invalid allocation Action, above stock',
+            );
+          }
+        }
+        await this.prisma.$transaction(async (tx) => {
+          try {
+            await this.productRepository.allocateProductStock(stockChanges, tx);
+            await this.ordersRepository.update(id, finalupdate, tx);
+          } catch (error) {
+            console.log(error);
+          }
+        });
+        return 'Berhasil Memperbarui Pesanan';
+      }
     }
     /* Case Kalau tidak ada perubahan item */
     const totalAmount = existingOrder.orderItems?.reduce(
       (a, v) => a + v.subtotal,
       0,
     );
-    if (Number(order.paidAmount) < 0) {
-      throw new BadRequestException('Invalid paidAmount, non-negative');
-    }
-    if (Number(order.paidAmount) > Number(totalAmount)) {
-      throw new BadRequestException('Invalid paidAmount, above total');
-    }
-    if (order.paidAmount === Number(totalAmount)) {
-      paymentStatus = PaymentStatus.PAID;
-    } else if (order.paidAmount === 0) {
-      paymentStatus = PaymentStatus.UNPAID;
-    } else {
-      paymentStatus = PaymentStatus.PARTIAL;
-    }
-    const isReady = existingOrder.orderItems?.every(
+    this.validator.checkIsValidPaidAmount(
+      Number(order.paidAmount),
+      totalAmount,
+    );
+    paymentStatus = this.calculator.paymentStatusSetter(
+      Number(order.paidAmount),
+      totalAmount,
+      paymentStatus,
+    );
+    const isReady = existingOrder.orderItems.every(
       (o) => Number(o.preparedQuantity) === Number(o.quantity),
     );
-    const isOnProgress = existingOrder.orderItems?.some(
+    const isOnProgress = existingOrder.orderItems.some(
       (o) => Number(o.preparedQuantity) > 0,
     );
     if (isReady) {
@@ -261,15 +206,13 @@ export class OrdersService {
     } else {
       currentStatus = OrderStatus.PENDING;
     }
-
-    const finalupdate = {
-      ...order,
-      pickupDate: order.pickupDate ? new Date(order.pickupDate) : undefined,
-      paymentStatus: paymentStatus,
-      status: currentStatus,
-      totalAmount: totalAmount,
-      orderItems: undefined,
-    };
+    const finalupdate = this.calculator.buildFinalUpdateOrder(
+      order,
+      totalAmount,
+      paymentStatus,
+      currentStatus,
+      undefined,
+    );
     await this.ordersRepository.update(id, finalupdate, this.prisma);
     return 'Berhasil Memperbarui Pesanan';
   }
