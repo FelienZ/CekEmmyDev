@@ -36,8 +36,12 @@ export class OrdersRepository {
     });
     return order;
   }
-  async update(id: string, data: Prisma.OrderUpdateInput) {
-    const order = await this.prisma.order.update({
+  async update(
+    id: string,
+    data: Prisma.OrderUpdateInput,
+    client: Prisma.TransactionClient,
+  ) {
+    const order = await client.order.update({
       where: { id },
       data,
     });
