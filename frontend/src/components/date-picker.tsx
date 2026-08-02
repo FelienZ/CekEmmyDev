@@ -2,7 +2,11 @@
 
 import * as React from "react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, ChevronDown } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  ChevronDown,
+  ChevronDownIcon,
+} from "lucide-react";
 
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -12,13 +16,8 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "./ui/button";
 import { Control, Controller, FieldValues, Path } from "react-hook-form";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "./ui/input-group";
-import { Field, FieldLabel } from "./ui/field";
+import { Field, FieldGroup, FieldLabel } from "./ui/field";
+import { id } from "date-fns/locale";
 
 interface DatePickerProps<TFieldValues extends FieldValues> {
   placeholder?: string;
@@ -43,83 +42,60 @@ function formatDate(date: Date | string | undefined) {
     year: "numeric",
   });
 }
-function isValidDate(date: Date | undefined) {
+/* function isValidDate(date: Date | undefined) {
   if (!date) {
     return false;
   }
   return !isNaN(date.getTime());
-}
-export function DatePickerInput<TFieldValues extends FieldValues>({
+} */
+export function DatePickerDropdown<TFieldValues extends FieldValues>({
   name,
   control,
-  placeholder,
 }: DatePickerProps<TFieldValues>) {
   const [open, setOpen] = React.useState(false);
-  /*  const [date, setDate] = React.useState<Date | undefined>(new Date());
-  const [month, setMonth] = React.useState<Date | undefined>(date); */
-  // console.log(date, month);
+  // const [date, setDate] = React.useState<Date | undefined>(new Date());
   return (
-    <Field>
-      <FieldLabel htmlFor="date-required">
-        {placeholder ?? "Pilih Tanggal"}
-      </FieldLabel>
+    <FieldGroup className="mx-auto max-w-xs flex-row">
       <Controller
-        name={name}
         control={control}
+        name={name}
         render={({ field }) => (
-          <InputGroup>
-            <InputGroupInput
-              id={name}
-              value={formatDate(field.value)}
-              placeholder={formatDate(new Date())}
-              onChange={(e) => {
-                const date = new Date(e.target.value);
-                if (isValidDate(date)) {
-                  field.onChange(date);
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  setOpen(true);
-                }
-              }}
-            />
-            <InputGroupAddon align="inline-end">
-              <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                  <InputGroupButton
-                    id="date-picker"
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label="Select date"
-                    type="button"
-                  >
-                    <CalendarIcon />
-                    <span className="sr-only">{placeholder}</span>
-                  </InputGroupButton>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-auto overflow-hidden p-0"
-                  align="end"
-                  alignOffset={-8}
-                  sideOffset={10}
+          <Field>
+            <FieldLabel htmlFor="date-picker-optional">
+              Tanggal Pengambilan
+            </FieldLabel>
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  id="date-picker-optional"
+                  className="w-32 justify-between font-normal"
                 >
-                  <Calendar
-                    mode="single"
-                    selected={new Date(field.value)}
-                    onSelect={(d) => {
-                      field.onChange(d);
-                      setOpen(false);
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-            </InputGroupAddon>
-          </InputGroup>
+                  {field.value ? formatDate(field.value) : "Masukkan Tanggal"}
+                  <ChevronDownIcon data-icon="inline-end" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-auto overflow-hidden p-0"
+                align="end"
+              >
+                <Calendar
+                  mode="single"
+                  locale={id}
+                  selected={field.value}
+                  captionLayout="dropdown"
+                  defaultMonth={field.value}
+                  onSelect={(date) => {
+                    field.onChange(date);
+                    setOpen(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </Field>
         )}
       />
-    </Field>
+    </FieldGroup>
   );
 }
 
