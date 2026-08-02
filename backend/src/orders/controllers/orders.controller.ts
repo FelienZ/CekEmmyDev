@@ -30,7 +30,7 @@ export class OrdersController {
   ): Promise<{ message: string; data: { id: string } }> {
     const id = await this.ordersService.createOrder(order);
     return {
-      message: 'Order successfully created',
+      message: 'Pesanan Berhasil Dibuat',
       data: { id },
     };
   }
@@ -60,14 +60,14 @@ export class OrdersController {
   ): Promise<{ message: string }> {
     await this.ordersService.updatePaymentStatus(id, status);
     return {
-      message: 'Payment status successfully updated',
+      message: 'Berhasil Memperbarui Status Pembayaran',
     };
   }
   @Delete('/:id')
   async deleteOrder(@Param('id') id: string): Promise<{ message: string }> {
     await this.ordersService.deleteOrder(id);
     return {
-      message: 'Order successfully deleted',
+      message: 'Berhasil Menghapus Pesanan',
     };
   }
 }
