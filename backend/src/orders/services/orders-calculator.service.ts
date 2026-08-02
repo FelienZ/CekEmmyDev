@@ -21,6 +21,7 @@ export class OrdersCalculator {
       if (matchItem.preparedQuantity) {
         matchItem.preparedQuantity += Number(i.preparedQuantity);
       }
+      mergedItems.set(i.productId, { ...matchItem });
     }
     return [...mergedItems.values()];
   }

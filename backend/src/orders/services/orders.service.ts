@@ -42,7 +42,7 @@ export class OrdersService {
     const isMissing = this.validator.isProductNotFound(products, productIds);
     if (isMissing.length > 0) {
       throw new NotFoundException(
-        `Products not found: ${isMissing.join(', ')}`,
+        `Produk Tidak Ditemukan: ${isMissing.join(', ')}`,
       );
     }
     /* Perhitungan bisnis: hitung total harga, subTotal item, dkk. */
@@ -66,7 +66,7 @@ export class OrdersService {
       const isValidDate = this.validator.isValidDate(order.pickupDate);
       if (!isValidDate) {
         throw new BadRequestException(
-          'Tanggal Pengambilan di bawah hari ini Invalid',
+          'Tanggal Pengambilan Invalid, harus di atas hari ini',
         );
       }
     }
@@ -111,6 +111,7 @@ export class OrdersService {
     let paymentStatus = order.paymentStatus || PaymentStatus.UNPAID;
     let currentStatus = existingOrder.status;
 
+    /* Masalah Sekarang, kalau order lama ada, dan baru ada blm fully merged */
     const mergedItems = this.calculator.mergeDuplicateItem(order.orderItems!);
     const productIds = mergedItems?.map((item) => item.productId);
     const products = await this.productRepository.findManyByIds(productIds);
@@ -127,7 +128,7 @@ export class OrdersService {
       const changeData: { productId: string; change: number }[] = [];
       if (order.orderItems) {
         const OrderItems = this.calculator.buildOrderItems(
-          order.orderItems,
+          mergedItems,
           productMap,
           changeData,
         );
@@ -164,7 +165,7 @@ export class OrdersService {
           const matchProduct = products.find((pr) => pr.id === p.productId);
           if (matchProduct && matchProduct.stock < Number(-p?.change)) {
             throw new BadRequestException(
-              'Invalid allocation Action, above stock',
+              'Alokasi stok invalid, di atas stok saat ini',
             );
           }
         }
