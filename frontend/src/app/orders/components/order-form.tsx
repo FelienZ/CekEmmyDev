@@ -1,5 +1,5 @@
 import ImageWithFallback from "@/components/custom/image-fallback";
-import { DatePickerInput } from "@/components/date-picker";
+import { DatePickerDropdown } from "@/components/date-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +40,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ShoppingCart, PackagePlus, Minus, Plus, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { useForm, useFieldArray, useWatch, Controller } from "react-hook-form";
-import { toast } from "sonner";
+import { NumericFormat } from "react-number-format";
 
 interface OrderFormProps {
   order?: Order;
@@ -66,6 +66,7 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
           paymentStatus: PaymentStatus.UNPAID,
           orderType: OrderType.TAKEAWAY,
           status: OrderStatus.PENDING,
+          paidAmount: 0,
           orderItems: [],
           pickupDate: new Date(),
         },
@@ -78,7 +79,10 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
     control: control,
     name: "orderItems",
   });
-
+  const watchedPaymentStatus = useWatch({
+    control: control,
+    name: "paymentStatus",
+  });
   const subTotalSnapshot = useMemo(() => {
     if (!watchedOrderItems) return 0;
 
@@ -112,8 +116,15 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
       return remove(idx);
     }
     const selectedItem = products?.find((p) => p.id === productId);
-    // console.log("cek selected: ", selectedItem);
+    const matchFieldItem = fields.findIndex((f) => f.productId === productId);
     if (selectedItem) {
+      if (matchFieldItem != -1) {
+        update(matchFieldItem, {
+          ...fields[matchFieldItem],
+          quantity: Number(fields[matchFieldItem].quantity) + 1,
+        });
+        return;
+      }
       update(idx, {
         ...fields[idx],
         productId: productId,
@@ -128,19 +139,10 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
   };
   const onSubmit = async (values: CreateOrder) => {
     if (order) {
-      let status = values.status;
-      const isNotCompleted = values.orderItems.some(
-        (v) => Number(v.preparedQuantity) !== Number(v.quantity),
-      );
-      /* console.log("cek value: ", values);
-      console.log("cek blm selesai: ", isNotCompleted); */
-      if (!isNotCompleted) {
-        // artinya udh semua
-        status = OrderStatus.READY;
-      } else {
-        status = OrderStatus.PREPARING;
+      let paidAmount = values.paidAmount;
+      if (values.paymentStatus === PaymentStatus.PAID) {
+        paidAmount = subTotalSnapshot;
       }
-
       mutateUpdate(
         {
           id: order.id,
@@ -148,7 +150,7 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
             customerName: values.customerName,
             pickupDate: values.pickupDate,
             paymentStatus: values.paymentStatus,
-            status: status,
+            paidAmount: paidAmount,
             orderItems: values.orderItems.map((o) => ({
               productId: o.productId,
               quantity: o.quantity,
@@ -159,12 +161,8 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
         },
         {
           onSuccess: () => {
-            toast.success("Data berhasil diperbarui!");
             reset();
             onOpenChange(false);
-          },
-          onError: (error) => {
-            toast.error(`Gagal memperbarui data: ${error.message}`);
           },
         },
       );
@@ -175,6 +173,7 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
           customerName: values.customerName,
           pickupDate: values.pickupDate,
           paymentStatus: values.paymentStatus,
+          paidAmount: Number(values.paidAmount),
           orderItems: values.orderItems.map((o) => ({
             productId: o.productId,
             quantity: o.quantity,
@@ -183,12 +182,8 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
         },
         {
           onSuccess: () => {
-            toast.success("Data berhasil disimpan!");
             reset();
             onOpenChange(false);
-          },
-          onError: (error) => {
-            toast.error(`Gagal menyimpan data: ${error.message}`);
           },
         },
       );
@@ -258,7 +253,7 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
             <FieldError errors={[errors.orderType]} />
           </Field>
           <Field className="flex flex-col gap-2">
-            <DatePickerInput control={control} name="pickupDate" />
+            <DatePickerDropdown control={control} name="pickupDate" />
             <FieldError errors={[errors.pickupDate]} className="text-xs" />
           </Field>
         </div>
@@ -289,6 +284,45 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
             )}
           />
         </Field>
+        {watchedPaymentStatus === PaymentStatus.PARTIAL && (
+          <Field className="flex flex-col gap-2">
+            <FieldLabel htmlFor="customer-name">Jumlah Pembayaran</FieldLabel>
+            <Controller
+              control={control}
+              name="paidAmount"
+              shouldUnregister
+              render={({ field }) => (
+                <NumericFormat
+                  customInput={Input}
+                  value={Number(field.value)}
+                  prefix="Rp"
+                  decimalSeparator=","
+                  thousandSeparator="."
+                  allowNegative={false}
+                  placeholder="Masukkan Jumlah Pembayaran..."
+                  onValueChange={(val) => {
+                    if (Number(val.floatValue) > 0) {
+                      field.onChange(val.floatValue);
+                    } else {
+                      field.onChange(0);
+                    }
+                  }}
+                />
+              )}
+            />
+            <div className="flex flex-col gap-1">
+              <FieldError
+                errors={
+                  watchedOrderItems.length == 0 ||
+                  watchedOrderItems[0].productId == ""
+                    ? [{ message: "Belum Memilih Item" }]
+                    : []
+                }
+              />
+              <FieldError errors={[errors.paidAmount]} />
+            </div>
+          </Field>
+        )}
         <Field className="flex flex-col gap-2 pt-3">
           <div className="flex items-center justify-between">
             <FieldLabel htmlFor="order-items">
@@ -345,17 +379,11 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
                                   value={Number(field.value)}
                                   onChange={(val) => {
                                     if (!isNaN(Number(val.target.value))) {
-                                      if (
-                                        Number(val.target.value) >= 0 &&
-                                        Number(val.target.value) <=
-                                          Number(f.product.stock)
-                                      ) {
+                                      if (Number(val.target.value) >= 0) {
                                         field.onChange(
                                           Number(val.target.value),
                                         );
                                       }
-                                    } else {
-                                      field.onChange(0);
                                     }
                                   }}
                                 />
@@ -364,12 +392,7 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
                                   size={"icon-xs"}
                                   type="button"
                                   onClick={() => {
-                                    if (
-                                      Number(field.value) <
-                                      Number(f.product.stock)
-                                    ) {
-                                      field.onChange(Number(field.value) + 1);
-                                    }
+                                    field.onChange(Number(field.value) + 1);
                                   }}
                                 >
                                   <Plus />
@@ -390,15 +413,13 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
                             render={({ field }) => (
                               <div className="flex flex-col gap-1">
                                 <div className="flex items-center justify-between">
-                                  <p>0</p>
+                                  <p>{String(field.value)}</p>
                                   <FieldLabel>Progress</FieldLabel>
                                   <p>{String(f.quantity)}</p>
                                 </div>
                                 <Slider
                                   value={[Number(field.value)]}
-                                  onValueChange={(val) =>
-                                    field.onChange(val[0])
-                                  }
+                                  onValueChange={(val) => field.onChange(val)}
                                   step={1}
                                   min={0}
                                   max={Number(f.quantity)}
@@ -450,6 +471,9 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
                       )}
                     />
                   )}
+                  {/* {errors.orderItems![idx]?.productId && (
+                    <FieldError errors={[errors.orderItems![idx]?.productId]} />
+                  )} */}
                 </div>
               ))
             ) : (
@@ -459,14 +483,32 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
         </Field>
       </FieldGroup>
       <DrawerFooter>
-        <div className="flex gap-2 items-center justify-end">
-          <p>Subtotal: </p>
-          <p className="text-primary">
-            {subTotalSnapshot.toLocaleString("id-ID", {
-              style: "currency",
-              currency: "IDR",
-            })}
-          </p>
+        <div className="flex justify-between w-full">
+          {order && (
+            <div className="flex gap-2 items-center justify-start w-full">
+              <p>Terbayar: </p>
+              <p className="text-info">
+                {order.paidAmount.toLocaleString("id-ID", {
+                  style: "currency",
+                  currency: "IDR",
+                })}
+              </p>
+            </div>
+          )}
+          <div className="flex gap-2 items-center justify-end w-full">
+            <p>Total Harga: </p>
+            <p className="text-primary">
+              {order
+                ? order.totalAmount.toLocaleString("id-ID", {
+                    style: "currency",
+                    currency: "IDR",
+                  })
+                : subTotalSnapshot.toLocaleString("id-ID", {
+                    style: "currency",
+                    currency: "IDR",
+                  })}
+            </p>
+          </div>
         </div>
         <Button type="submit">Submit</Button>
         <DrawerClose className="border rounded-md p-1">Cancel</DrawerClose>
