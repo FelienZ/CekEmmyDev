@@ -255,11 +255,11 @@ export const orderColumns: ColumnDef<Order>[] = [
     enableColumnFilter: false,
     enableSorting: false,
     cell: ({ row }) => (
-      <div className="w-full flex justify-center gap-2">
+      <div className="w-full flex justify-center gap-1">
         {row.original.orderItems.map((i, idx) =>
           idx < 2 ? (
             <Badge
-              key={i.productId}
+              key={idx}
               variant="outline"
               className={
                 row.original.status === OrderStatus.COMPLETED
@@ -267,11 +267,10 @@ export const orderColumns: ColumnDef<Order>[] = [
                   : "bg-muted text-muted-foreground"
               }
             >
-              {i.product.name.replace("Pempek ", "P. ")} : {i.preparedQuantity}{" "}
-              / {i.quantity}
+              {i.product.name} : {i.preparedQuantity} / {i.quantity}
             </Badge>
           ) : (
-            "..."
+            idx < 3 && "..."
           ),
         )}
       </div>
@@ -318,7 +317,7 @@ export const orderColumns: ColumnDef<Order>[] = [
                   .table.options.meta?.onCompleted?.(row.original.id);
               }}
             >
-              <SquareCheckBig className="text-success" /> Tandai Selesai
+              <SquareCheckBig /> Tandai Selesai
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

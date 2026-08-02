@@ -25,7 +25,7 @@ export function OrderDrawer({
       onOpenChange={onOpenChange}
       direction={isMobile ? "bottom" : "right"}
     >
-      <DrawerContent>
+      <DrawerContent className="min-h-screen">
         {isLoading ? (
           <OrderDrawerLoading />
         ) : (
