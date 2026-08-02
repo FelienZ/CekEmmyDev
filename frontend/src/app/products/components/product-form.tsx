@@ -47,7 +47,6 @@ export function ProductForm({ product, onOpenChange }: ProductFormProps) {
     control,
     formState: { errors },
     reset,
-    setValue,
     handleSubmit,
   } = useForm({
     resolver: zodResolver(CreateProductSchema),
@@ -68,24 +67,16 @@ export function ProductForm({ product, onOpenChange }: ProductFormProps) {
         { id: product.id, payload: values },
         {
           onSuccess: () => {
-            toast.success("Data berhasil diperbarui!");
             reset();
             onOpenChange(false);
-          },
-          onError: (error) => {
-            toast.error(`Gagal memperbarui data: ${error.message}`);
           },
         },
       );
     } else {
       mutateCreate(values, {
         onSuccess: () => {
-          toast.success("Data berhasil disimpan!");
           reset();
           onOpenChange(false);
-        },
-        onError: (error) => {
-          toast.error(`Gagal menyimpan data: ${error.message}`);
         },
       });
     }
@@ -142,8 +133,6 @@ export function ProductForm({ product, onOpenChange }: ProductFormProps) {
                       Number(val.floatValue) > 0
                     ) {
                       field.onChange(val.floatValue);
-                    } else {
-                      field.onChange(0);
                     }
                   }}
                   placeholder="Masukkan Harga"
@@ -154,21 +143,23 @@ export function ProductForm({ product, onOpenChange }: ProductFormProps) {
           </Field>
           <Field className="flex flex-col gap-2">
             <FieldLabel htmlFor="product-stock">Jumlah Stok</FieldLabel>
-            <Input
-              {...register("stock", {
-                onChange: (val) => {
-                  if (
-                    !isNaN(Number(val.target.value)) &&
-                    Number(val.target.value) > 0
-                  ) {
-                    setValue("stock", Number(val.target.value));
-                  } else {
-                    setValue("stock", 0);
-                  }
-                },
-              })}
-              value={product?.stock}
-              placeholder="Masukkan Stok Barang"
+            <Controller
+              name="stock"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  value={Number(field.value)}
+                  name="stock"
+                  onChange={(val) => {
+                    if (Number(val.target.value) <= 0) {
+                      field.onChange(Number(-val.target.value));
+                    } else if (!isNaN(Number(val.target.value))) {
+                      field.onChange(Number(val.target.value));
+                    }
+                  }}
+                  placeholder="Masukkan Stok Barang"
+                />
+              )}
             />
             <FieldError errors={[errors.stock]} />
           </Field>

@@ -25,7 +25,7 @@ export default function ProductDrawer({
       onOpenChange={onOpenChange}
       direction={isMobile ? "bottom" : "right"}
     >
-      <DrawerContent>
+      <DrawerContent className="min-h-screen">
         {isLoading ? (
           <ProductDrawerLoading />
         ) : (
