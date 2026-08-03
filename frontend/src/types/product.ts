@@ -14,6 +14,7 @@ export interface Product{
 export interface ProductCategories{
   categoryId: string;
   name: string;
+  slug: string;
   description: string;
   product: Product[]
 }

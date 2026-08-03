@@ -4,6 +4,7 @@ export interface UpdateOrderPayload {
     customerName?: string,
     orderType?: OrderType,
     paymentStatus?: PaymentStatus,
+    paidAmount?: number,
     pickupDate?: string | Date,
     status?: OrderStatus,
     orderItems?: {
@@ -17,6 +18,7 @@ export interface CreateOrderPayload {
     customerName: string,
     orderType?: OrderType,
     paymentStatus?: PaymentStatus,
+    paidAmount?: number,
     pickupDate?: string | Date,
     orderItems: {
         productId: string,

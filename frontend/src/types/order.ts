@@ -30,6 +30,7 @@ export interface Order {
   id: string;
   customerName: string;
   totalAmount: number;
+  paidAmount: number;
   orderItems: OrderItem[];
   status: OrderStatus;
   paymentStatus: PaymentStatus;
@@ -51,13 +52,15 @@ export interface OrderItem {
 export const CreateOrderSchema = z.object({
   customerName: z.string().min(3, "Minimal 3 Karakter"),
   pickupDate : z.coerce.date("Tanggal Wajib Dipilih").refine(d => {
+    d.setHours(0,0,0,0)
     const time = new Date()
     time.setHours(0, 0, 0, 0)
     return d >= time
   }, "Tanggal Tidak Valid"),
-  paymentStatus: z.enum(PaymentStatus, {error: "Status Pembayaran Invalid"}),
   orderType: z.enum(OrderType, {error: "Tipe Pemesanan Invalid"}),
-  status: z.enum(OrderStatus, {error: "Status Pengerjaan Invalid"}),
+  status: z.enum(OrderStatus, {error: "Status Pengerjaan Invalid"}).optional(),
+  paymentStatus: z.enum(PaymentStatus, {error: "Status Pembayaran Invalid"}),
+  paidAmount: z.coerce.number().min(0,"Jumlah Bayar Invalid").default(0).optional(),
   orderItems : z.object({
     productId: z.string().nonempty("Id Produk Invalid"),
     quantity: z.coerce.number().min(1, "Minimal 1 Item"),
@@ -65,8 +68,8 @@ export const CreateOrderSchema = z.object({
     subtotal: z.coerce.number().optional(),
     product: z.object({
       name: z.string().min(3, "Minimal 3 Karakter"),
-      price: z.coerce.number({ error: "Wajib diisi angka" }).min(0,"Harga Negatif Invalid"),
-      stock: z.coerce.number({ error: "Wajib diisi angka" }).min(0, "Stok Negatif Invalid"),
+      price: z.coerce.number({ error: "Wajib diisi angka" }).min(0,"Harga Invalid"),
+      stock: z.coerce.number({ error: "Wajib diisi angka" }).min(0, "Stok Invalid"),
       })
   }).array().min(1)
 })
