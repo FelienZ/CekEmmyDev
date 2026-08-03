@@ -27,8 +27,12 @@ export function useMakeOrder(){
     const queryClient = useQueryClient()
     return useMutation({
         mutationFn: orderServices.createOrder,
-        onSuccess: async ()=> {
+        onSuccess: async (data)=> {
             await queryClient.invalidateQueries({queryKey: ["orders"]})
+            toast.success(data.data?.message)
+        },
+        onError: (data: AxiosError<{message: string}>)=>{
+            toast.error(data.response?.data.message)
         }
     })
 }
@@ -37,9 +41,14 @@ export function useUpdateOrder(){
     const queryClient = useQueryClient()
     return useMutation({
         mutationFn: ({id, payload}:{id: string, payload: UpdateOrderPayload})=>  orderServices.updateOrder(id, payload),
-        onSuccess: async (_, args)=>{
+        onSuccess: async (data, args)=>{
             await queryClient.invalidateQueries({queryKey: ["orders"]})
+            await queryClient.invalidateQueries({queryKey: ["products"]})
             await queryClient.invalidateQueries({queryKey: ["order", args.id]})
+            toast.success(data.data?.message)
+        },
+        onError: (data: AxiosError<{message: string}>)=>{
+            toast.error(data.response?.data.message)
         }
     })
 }
