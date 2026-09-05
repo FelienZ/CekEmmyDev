@@ -1,9 +1,6 @@
-"use client";
-
-import { orderColumns } from "@/app/orders/components/order-table-columns";
+import { orderColumns } from "@/app/orders/components/tables/order-table-columns";
 import { SectionCards } from "@/app/dashboard/components/section-cards";
 
-import { useGetOrders } from "@/lib/hooks/useOrders";
 import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -15,18 +12,18 @@ import {
   NotebookPen,
   ShoppingCart,
 } from "lucide-react";
-import { DataTableOrders } from "../orders/components/data-table-orders";
+import { DataTableOrders } from "../orders/components/tables/data-table-orders";
 import { DataTableProducts } from "../products/components/data-table-products";
-import {
-  useGetProductCategories,
-  useGetProducts,
-} from "@/lib/hooks/useProducts";
 import { productColumns } from "../products/components/product-table-columns";
+import { orderServices } from "@/lib/services/orderServices";
+import { productServices } from "@/lib/services/productServices";
 
-export default function DashboardPage() {
-  const { data: orders } = useGetOrders();
-  const { data: products } = useGetProducts();
-  const { data: categories } = useGetProductCategories();
+// next FE patternnya selain dashboard di pecah jadi page RSC -> children boleh client
+
+export default async function DashboardPage() {
+  const orders = await orderServices.getOrders();
+  const products = await productServices.getProducts();
+  const categories = await productServices.getProductCategories();
 
   return (
     <div className="flex flex-1 flex-col">
