@@ -33,7 +33,9 @@ export interface Transaction {
 export interface TransactionCategory {
   categoryId: string;
   name: string;
+  slug: string;
   description: string;
+  isActive: boolean;
 
   type: TransactionType;
 

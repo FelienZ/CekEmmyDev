@@ -51,8 +51,18 @@ export interface CreateTransactionPayload {
   transactionDate: Date | string;
 }
 
+export interface UpdateTransactionPayload {
+  description?: string;
+}
+
 export interface CreateTransactionCategory {
   name: string;
   description?: string;
   type: TransactionType;
 }
+
+export interface UpdateTransactionCategoryPayload {
+  name?: string;
+  description?: string;
+}
+
