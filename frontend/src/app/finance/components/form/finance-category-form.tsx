@@ -21,7 +21,10 @@ import {
   SelectItem,
   Select,
 } from "@/components/ui/select";
-import { useMakeTransactionCategory } from "@/lib/hooks/useTransactions";
+import {
+  useMakeTransactionCategory,
+  useUpdateTransactionCategory,
+} from "@/lib/hooks/useTransactions";
 import {
   CreateTransactionCategorySchema,
   TransactionCategory,
@@ -39,8 +42,12 @@ export function FinanceCategoryForm({
   category,
   onOpenChange,
 }: FinanceCategoryFormProps) {
-  const { mutate: mutateCreate } = useMakeTransactionCategory();
-  // const { mutate: mutateUpdate } = useupdate();
+  const isEdit = !!category;
+  const { mutate: mutateCreate, isPending: isCreating } =
+    useMakeTransactionCategory();
+  const { mutate: mutateUpdate, isPending: isUpdating } =
+    useUpdateTransactionCategory();
+
   const {
     register,
     control,
@@ -50,16 +57,22 @@ export function FinanceCategoryForm({
   } = useForm({
     resolver: zodResolver(CreateTransactionCategorySchema),
     defaultValues: {
-      description: "",
-      name: "",
-      type: TransactionType.INCOME,
+      description: category?.description ?? "",
+      name: category?.name ?? "",
+      type: category?.type ?? TransactionType.INCOME,
     },
   });
-  // console.log(product);
+
   const onSubmit = async (values: CreateTransactionCategory) => {
-    /* if (transaction) {
+    if (isEdit && category) {
       mutateUpdate(
-        { id: transaction.id, payload: values },
+        {
+          id: category.categoryId,
+          payload: {
+            name: values.name,
+            description: values.description,
+          },
+        },
         {
           onSuccess: () => {
             reset();
@@ -67,28 +80,29 @@ export function FinanceCategoryForm({
           },
         },
       );
-    } else { */
-    mutateCreate(values, {
-      onSuccess: () => {
-        reset();
-        onOpenChange(false);
-      },
-    });
+    } else {
+      mutateCreate(values, {
+        onSuccess: () => {
+          reset();
+          onOpenChange(false);
+        },
+      });
+    }
   };
-  // };
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
       className="flex flex-col h-full max-h-screen overflow-y-auto"
     >
-      {category ? (
+      {isEdit && category ? (
         <DrawerHeader className="gap-1 border-b pb-4">
           <DrawerTitle className="line-clamp-2 w-full text-center pb-2">
             Edit Data Kategori Transaksi
           </DrawerTitle>
           <DrawerDescription className="justify-center flex items-center gap-2">
-            Transaksi:
-            <Badge variant={"secondary"}>{category.categoryId}</Badge>
+            Kategori:
+            <Badge variant={"secondary"}>{category.name}</Badge>
           </DrawerDescription>
         </DrawerHeader>
       ) : (
@@ -104,9 +118,13 @@ export function FinanceCategoryForm({
       <FieldGroup className="p-4 flex flex-col gap-3">
         <div className="grid grid-cols-2 gap-4">
           <Field className="flex flex-col gap-2">
-            <FieldLabel htmlFor="type">Nama Kategori</FieldLabel>
-            <Input {...register("name")} placeholder="Nama Kategori..." />
-            <FieldError errors={[errors.description]} />
+            <FieldLabel htmlFor="name">Nama Kategori</FieldLabel>
+            <Input
+              id="name"
+              {...register("name")}
+              placeholder="Nama Kategori..."
+            />
+            <FieldError errors={[errors.name]} />
           </Field>
           <Field className="flex flex-col gap-2">
             <FieldLabel htmlFor="type">Tipe Transaksi</FieldLabel>
@@ -114,7 +132,11 @@ export function FinanceCategoryForm({
               name="type"
               control={control}
               render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select
+                  disabled={isEdit}
+                  onValueChange={field.onChange}
+                  value={field.value}
+                >
                   <SelectTrigger id="type" className="w-full">
                     <SelectValue placeholder="Pilih Tipe Transaksi" />
                   </SelectTrigger>
@@ -132,16 +154,19 @@ export function FinanceCategoryForm({
           </Field>
         </div>
         <Field className="flex flex-col gap-2">
-          <FieldLabel htmlFor="product-name">Keterangan</FieldLabel>
+          <FieldLabel htmlFor="description">Keterangan</FieldLabel>
           <Input
+            id="description"
             {...register("description")}
-            placeholder="Masukkan Keterangan Transaksi..."
+            placeholder="Masukkan Keterangan Kategori..."
           />
           <FieldError errors={[errors.description]} />
         </Field>
       </FieldGroup>
       <DrawerFooter>
-        <Button type="submit">Submit</Button>
+        <Button type="submit" disabled={isCreating || isUpdating}>
+          {isEdit ? "Simpan Perubahan" : "Submit"}
+        </Button>
         <DrawerClose className="border rounded-md p-1">Cancel</DrawerClose>
       </DrawerFooter>
     </form>

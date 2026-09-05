@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/table";
 import { TabsContent, Tabs } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useDeleteTransaction } from "@/lib/hooks/useTransactions";
 import { Transaction, TransactionCategory } from "@/types/finance";
 import {
   useSensors,
@@ -76,8 +75,8 @@ interface DataTableProps {
   data: Transaction[];
   categories: TransactionCategory[];
   columns: ColumnDef<Transaction>[];
-  onOpenEdit?: (data: Transaction) => void;
   onOpenDetail?: (id: string) => void;
+  onOpenEdit?: (data: Transaction) => void;
 }
 
 export function DataTableFinance({
@@ -93,8 +92,6 @@ export function DataTableFinance({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
-  const deleteFn = useDeleteTransaction();
-  const isMobile = useIsMobile();
   React.useEffect(() => {
     if (initialData) {
       setData(initialData);
@@ -148,8 +145,8 @@ export function DataTableFinance({
     getFacetedUniqueValues: getFacetedUniqueValues(),
     meta: {
       pathName: pathName,
+      onShowDetail: onOpenDetail,
       onEdit: onOpenEdit,
-      onDelete: deleteFn.mutate,
     },
   });
 

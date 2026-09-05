@@ -1,22 +1,20 @@
 "use client";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Transaction } from "@/types/finance";
-import FinanceDrawerLoading from "../finance-drawer-loading";
 import { FinanceForm } from "./finance-form";
 
+import { Transaction } from "@/types/finance";
+
 interface TransactionDrawerProps {
-  Transaction?: Transaction;
-  isLoading?: boolean;
   isOpen?: boolean;
   onOpenChange: (open: boolean) => void;
+  transaction?: Transaction;
 }
 
 export default function FinanceDrawer({
-  Transaction,
-  isLoading,
   isOpen,
   onOpenChange,
+  transaction,
 }: TransactionDrawerProps) {
   const isMobile = useIsMobile();
   return (
@@ -26,11 +24,7 @@ export default function FinanceDrawer({
       direction={isMobile ? "bottom" : "right"}
     >
       <DrawerContent className="min-h-screen">
-        {isLoading ? (
-          <FinanceDrawerLoading />
-        ) : (
-          <FinanceForm transaction={Transaction} onOpenChange={onOpenChange} />
-        )}
+        <FinanceForm onOpenChange={onOpenChange} transaction={transaction} />
       </DrawerContent>
     </Drawer>
   );

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { TabsContent, Tabs } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Transaction, TransactionCategory } from "@/types/finance";
+import { TransactionCategory } from "@/types/finance";
 import {
   useSensors,
   useSensor,
@@ -65,15 +65,17 @@ import React from "react";
 interface DataTableProps {
   categories: TransactionCategory[];
   columns: ColumnDef<TransactionCategory>[];
-  onOpenEdit?: (data: Transaction) => void;
-  onOpenDetail?: (id: string) => void;
+  onOpenEdit?: (data: TransactionCategory) => void;
+  onActivate?: (id: string) => void;
+  onDeactivate?: (id: string) => void;
 }
 
 export function DataTableFinanceCategories({
   categories: initialData,
   columns,
-  onOpenDetail,
   onOpenEdit,
+  onActivate,
+  onDeactivate,
 }: DataTableProps) {
   const [data, setData] = React.useState(initialData);
   const [rowSelection, setRowSelection] = React.useState({});
@@ -136,6 +138,9 @@ export function DataTableFinanceCategories({
     getFacetedUniqueValues: getFacetedUniqueValues(),
     meta: {
       pathName: pathName,
+      onEdit: onOpenEdit,
+      onActivate: onActivate,
+      onDeactivate: onDeactivate,
     },
   });
 

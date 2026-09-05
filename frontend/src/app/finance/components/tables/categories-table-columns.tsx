@@ -8,18 +8,19 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenu,
 } from "@/components/ui/dropdown-menu";
 import { transactionTypesConfig } from "@/lib/utils/styleConfig";
 import { TransactionCategory } from "@/types/finance";
 import { ColumnDef, RowData } from "@tanstack/react-table";
-import { EllipsisVerticalIcon, Info, Edit } from "lucide-react";
+import { EllipsisVerticalIcon, Edit, PowerOff, Power } from "lucide-react";
 
 declare module "@tanstack/react-table" {
   interface TableMeta<TData extends RowData> {
-    onShowDetail?: (id: string) => void;
     onEdit?: (order: TData) => void;
-    onDelete?: (id: string) => void;
+    onActivate?: (id: string) => void;
+    onDeactivate?: (id: string) => void;
     pathName?: string;
   }
 }
@@ -77,7 +78,7 @@ export const financeCategoriesColumns: ColumnDef<TransactionCategory>[] = [
     },
   },
   {
-    accessorKey: "transactionCategory",
+    accessorKey: "name",
     header: () => <div className="w-full text-center">Kategori Transaksi</div>,
     meta: {
       label: "Kategori Transaksi",
@@ -85,7 +86,6 @@ export const financeCategoriesColumns: ColumnDef<TransactionCategory>[] = [
     enableColumnFilter: true,
     enableSorting: false,
     cell: ({ row }) => {
-      //   const Icon = config.icon;
       return (
         <div className="w-full flex justify-center">
           <Badge variant={"outline"}>{row.original.name}</Badge>
@@ -94,7 +94,7 @@ export const financeCategoriesColumns: ColumnDef<TransactionCategory>[] = [
     },
   },
   {
-    accessorKey: "transactionType",
+    accessorKey: "type",
     header: () => <div className="w-full text-center">Tipe Transaksi</div>,
     meta: {
       label: "Tipe Transaksi",
@@ -115,12 +115,38 @@ export const financeCategoriesColumns: ColumnDef<TransactionCategory>[] = [
     },
   },
   {
+    accessorKey: "isActive",
+    header: () => <div className="w-full text-center">Status</div>,
+    meta: {
+      label: "Status",
+    },
+    enableColumnFilter: true,
+    enableSorting: false,
+    cell: ({ row }) => {
+      const isActive = row.original.isActive;
+      return (
+        <div className="w-full flex justify-center">
+          <Badge
+            className={
+              isActive
+                ? "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
+                : "bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100"
+            }
+          >
+            {isActive ? "Aktif" : "Nonaktif"}
+          </Badge>
+        </div>
+      );
+    },
+  },
+  {
     id: "actions",
     enableColumnFilter: false,
     enableSorting: false,
     cell: ({ row }) => {
       const currentPath = row.getAllCells()[0].getContext().table.options
         .meta?.pathName;
+      const isActive = row.original.isActive;
       return (
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -142,21 +168,36 @@ export const financeCategoriesColumns: ColumnDef<TransactionCategory>[] = [
                 row
                   .getAllCells()[0]
                   .getContext()
-                  .table.options.meta?.onShowDetail?.(row.original.categoryId);
-              }}
-            >
-              <Info /> Rincian
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                row
-                  .getAllCells()[0]
-                  .getContext()
                   .table.options.meta?.onEdit?.(row.original);
               }}
             >
               <Edit /> Edit
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {isActive ? (
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => {
+                  row
+                    .getAllCells()[0]
+                    .getContext()
+                    .table.options.meta?.onDeactivate?.(row.original.categoryId);
+                }}
+              >
+                <PowerOff /> Nonaktifkan
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                onClick={() => {
+                  row
+                    .getAllCells()[0]
+                    .getContext()
+                    .table.options.meta?.onActivate?.(row.original.categoryId);
+                }}
+              >
+                <Power /> Aktifkan
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       );

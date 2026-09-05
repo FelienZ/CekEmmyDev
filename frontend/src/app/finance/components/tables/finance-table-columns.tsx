@@ -14,15 +14,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Transaction } from "@/types/finance";
 import { ColumnDef, RowData } from "@tanstack/react-table";
-import { EllipsisVerticalIcon, Info, Edit, Trash2 } from "lucide-react";
+import { EllipsisVerticalIcon, Info, Edit } from "lucide-react";
 import { NumericFormat } from "react-number-format";
 import { toast } from "sonner";
 
 declare module "@tanstack/react-table" {
   interface TableMeta<TData extends RowData> {
     onShowDetail?: (id: string) => void;
-    onEdit?: (transaction: TData) => void;
-    onDelete?: (id: string) => void;
+    onEdit?: (data: TData) => void;
     pathName?: string;
   }
 }
@@ -220,6 +219,7 @@ export const financeColumns: ColumnDef<Transaction>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
             <DropdownMenuItem
+            disabled
               onClick={() => {
                 row
                   .getAllCells()[0]
@@ -237,18 +237,7 @@ export const financeColumns: ColumnDef<Transaction>[] = [
                   .table.options.meta?.onEdit?.(row.original);
               }}
             >
-              <Edit /> Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() => {
-                row
-                  .getAllCells()[0]
-                  .getContext()
-                  .table.options.meta?.onDelete?.(row.original.id);
-              }}
-            >
-              <Trash2 /> Hapus
+              <Edit /> Ubah
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

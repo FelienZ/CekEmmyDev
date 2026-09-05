@@ -6,54 +6,50 @@ import FinanceKPI from "./components/finance-kpi";
 import { DataTableFinance } from "./components/tables/data-table-finance";
 import { financeColumns } from "./components/tables/finance-table-columns";
 import {
-  useTransaction,
   useTransactionCategories,
-  useTransactionCategory,
   useTransactions,
+  useActivateCategory,
+  useDeactivateCategory,
 } from "@/lib/hooks/useTransactions";
 import FinanceDrawer from "./components/form/finance-drawer";
 import { useMemo, useState } from "react";
 import { DataTableFinanceCategories } from "./components/tables/data-table-categories";
-import { financeCategoriesColumns } from "./components/tables/categories-table-columns copy";
+import { financeCategoriesColumns } from "./components/tables/categories-table-columns";
 import FinanceCategoryDrawer from "./components/form/finance-category-drawer";
-import { Transaction, TransactionType } from "@/types/finance";
+import { Transaction, TransactionCategory, TransactionType } from "@/types/finance";
 
 export default function FinancialPage() {
   const { data: transactions } = useTransactions();
   const { data: categories } = useTransactionCategories();
-  const [selected, setSelected] = useState<{
-    transaction?: string;
-    category?: string;
-  }>({
-    transaction: undefined,
-    category: undefined,
-  });
-  const { data: transaction, isLoading: transactionLoading } = useTransaction(
-    selected.transaction,
-  );
-  const { data: category, isLoading: categoryLoading } = useTransactionCategory(
-    selected.category,
-  );
-  const [isOpenDetail, setIsOpenDetail] = useState(false);
+  const { mutate: activateCategory } = useActivateCategory();
+  const { mutate: deactivateCategory } = useDeactivateCategory();
+
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | undefined>(undefined);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(undefined);
+
   const [isOpen, setIsOpen] = useState({
     transaction: false,
     category: false,
   });
-  const handleOpenCreate = () => {
-    setSelected({ ...selected, transaction: undefined });
-    setIsOpen({ ...isOpen, transaction: !isOpen.transaction });
+
+  const handleOpenCreateTransaction = () => {
+    setSelectedTransactionId(undefined);
+    setIsOpen((prev) => ({ ...prev, transaction: !prev.transaction }));
   };
-  const handleOpenEdit = (t: Transaction) => {
-    setSelected({ ...selected, transaction: t?.id });
-    setIsOpen({ ...isOpen, transaction: !isOpen.transaction });
+
+  const handleOpenEditTransaction = (data: Transaction) => {
+    setSelectedTransactionId(data.id);
+    setIsOpen((prev) => ({ ...prev, transaction: true }));
   };
+
   const handleOpenCreateCategory = () => {
-    setSelected({ ...selected, category: undefined });
-    setIsOpen({ ...isOpen, category: !isOpen.category });
+    setSelectedCategoryId(undefined);
+    setIsOpen((prev) => ({ ...prev, category: !prev.category }));
   };
-  const handleOpenEditCategory = (id: string) => {
-    setSelected({ ...selected, category: id });
-    setIsOpen({ ...isOpen, category: !isOpen.transaction });
+
+  const handleOpenEditCategory = (data: TransactionCategory) => {
+    setSelectedCategoryId(data.categoryId);
+    setIsOpen((prev) => ({ ...prev, category: true }));
   };
 
   const incomeTotal = useMemo(() => {
@@ -73,6 +69,15 @@ export default function FinancialPage() {
     return total;
   }, [transactions]);
   const netProfit = Number(incomeTotal) - Number(expenseTotal);
+
+  const selectedTransaction = transactions?.find(
+    (t) => t.id === selectedTransactionId,
+  );
+
+  const selectedCategory = categories?.find(
+    (c) => c.categoryId === selectedCategoryId,
+  );
+
   return (
     <div className="flex flex-col gap-5 py-4 lg:gap-8 md:py-6 lg:px-6">
       <div className="flex max-sm:flex-col gap-2 items-center justify-between">
@@ -83,7 +88,7 @@ export default function FinancialPage() {
           <p>Pantau Keuangan dan Transaksi</p>
         </div>
         <Button
-          onClick={() => handleOpenCreate()}
+          onClick={() => handleOpenCreateTransaction()}
           size={"lg"}
           className="gap-2 max-sm:w-full"
         >
@@ -96,28 +101,33 @@ export default function FinancialPage() {
         profit={netProfit}
       />
       <FinanceDrawer
-        key={selected.transaction ? `edit-${selected.transaction}` : "create"}
-        Transaction={transaction}
+        key={
+          selectedTransactionId
+            ? `edit-transaction-${selectedTransactionId}`
+            : "create-transaction"
+        }
+        transaction={selectedTransaction}
         isOpen={isOpen.transaction}
-        isLoading={transactionLoading}
-        onOpenChange={handleOpenCreate}
+        onOpenChange={(open) => {
+          if (!open) setSelectedTransactionId(undefined);
+          setIsOpen((prev) => ({ ...prev, transaction: open }));
+        }}
       />
       <FinanceCategoryDrawer
         key={
-          selected.category
-            ? `edit-category-${selected.category}`
+          selectedCategoryId
+            ? `edit-category-${selectedCategoryId}`
             : "create-category"
         }
-        category={category}
+        category={selectedCategory}
         isOpen={isOpen.category}
-        isLoading={categoryLoading}
         onOpenChange={handleOpenCreateCategory}
       />
       <DataTableFinance
         data={transactions || []}
         columns={financeColumns}
         categories={categories || []}
-        onOpenEdit={handleOpenEdit}
+        onOpenEdit={handleOpenEditTransaction}
       />
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
@@ -133,6 +143,9 @@ export default function FinancialPage() {
         <DataTableFinanceCategories
           categories={categories || []}
           columns={financeCategoriesColumns}
+          onOpenEdit={handleOpenEditCategory}
+          onActivate={(id) => activateCategory(id)}
+          onDeactivate={(id) => deactivateCategory(id)}
         />
       </div>
     </div>
