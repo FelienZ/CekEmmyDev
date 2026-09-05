@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { format } from "date-fns";
+import { addDays, format } from "date-fns";
 import {
   Calendar as CalendarIcon,
   ChevronDown,
@@ -18,9 +18,11 @@ import { Button } from "./ui/button";
 import { Control, Controller, FieldValues, Path } from "react-hook-form";
 import { Field, FieldGroup, FieldLabel } from "./ui/field";
 import { id } from "date-fns/locale";
+import { DateRange } from "react-day-picker";
 
 interface DatePickerProps<TFieldValues extends FieldValues> {
   placeholder?: string;
+  fieldName: string;
   name: Path<TFieldValues>;
   control: Control<TFieldValues>;
 }
@@ -50,33 +52,32 @@ function formatDate(date: Date | string | undefined) {
 } */
 export function DatePickerDropdown<TFieldValues extends FieldValues>({
   name,
+  fieldName,
   control,
 }: DatePickerProps<TFieldValues>) {
   const [open, setOpen] = React.useState(false);
   // const [date, setDate] = React.useState<Date | undefined>(new Date());
   return (
-    <FieldGroup className="mx-auto max-w-xs flex-row">
-      <Controller
-        control={control}
-        name={name}
-        render={({ field }) => (
-          <Field>
-            <FieldLabel htmlFor="date-picker-optional">
-              Tanggal Pengambilan
-            </FieldLabel>
+    <FieldGroup className="mx-auto w-full flex-row">
+      <Field className="flex flex-col gap-2">
+        <FieldLabel htmlFor="product-name">{fieldName}</FieldLabel>
+        <Controller
+          control={control}
+          name={name}
+          render={({ field }) => (
             <Popover open={open} onOpenChange={setOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   id="date-picker-optional"
-                  className="w-32 justify-between font-normal"
+                  className="w-full justify-between font-normal"
                 >
                   {field.value ? formatDate(field.value) : "Masukkan Tanggal"}
                   <ChevronDownIcon data-icon="inline-end" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent
-                className="w-auto overflow-hidden p-0"
+                className="w-full overflow-hidden p-0"
                 align="end"
               >
                 <Calendar
@@ -92,10 +93,52 @@ export function DatePickerDropdown<TFieldValues extends FieldValues>({
                 />
               </PopoverContent>
             </Popover>
-          </Field>
-        )}
-      />
+          )}
+        />
+      </Field>
     </FieldGroup>
+  );
+}
+
+export function DatePickerWithRange() {
+  const [date, setDate] = React.useState<DateRange | undefined>({
+    from: new Date(new Date().getFullYear(), 0, 20),
+    to: addDays(new Date(new Date().getFullYear(), 0, 20), 20),
+  });
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          id="date-picker-range"
+          className="justify-start px-2.5 font-normal"
+        >
+          <CalendarIcon data-icon="inline-start" />
+          {date?.from ? (
+            date.to ? (
+              <>
+                {format(date.from, "LLL dd, y")} -{" "}
+                {format(date.to, "LLL dd, y")}
+              </>
+            ) : (
+              format(date.from, "LLL dd, y")
+            )
+          ) : (
+            <span>Pick a date</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="range"
+          defaultMonth={date?.from}
+          selected={date}
+          onSelect={setDate}
+          numberOfMonths={2}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
 

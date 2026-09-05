@@ -54,14 +54,14 @@ const data = {
       icon: <ShoppingBasket />,
     },
     {
-      title: "Pelanggan",
-      url: "/customers",
-      icon: <UsersIcon />,
-    },
-    {
       title: "Keuangan",
       url: "/finance",
       icon: <Wallet />,
+    },
+    {
+      title: "Pelanggan",
+      url: "/customers",
+      icon: <UsersIcon />,
     },
   ],
   navSecondary: [
