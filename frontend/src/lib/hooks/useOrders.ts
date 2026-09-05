@@ -68,6 +68,21 @@ export function useMarkCompleted(){
     })
 }
 
+export function useMarkCanceled(){
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: (id: string) => orderServices.cancelOrder(id),
+        onSuccess: async(data, args) => {
+            await queryClient.invalidateQueries({queryKey: ["orders"]})
+            await queryClient.invalidateQueries({queryKey: ["order", args]})
+            toast.success(data.data?.message)
+        },
+        onError: (data: AxiosError<{message: string}>)=>{
+            toast.error(data.response?.data.message)
+        }
+    })
+}
+
 export function useUpdatePaymentStatus (){
     const queryClient = useQueryClient()
     return useMutation({
