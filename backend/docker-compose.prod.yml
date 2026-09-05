@@ -1,0 +1,11 @@
+services:
+  backend:
+    image: ghcr.io/FelienZ/cekemmy-backend:latest
+    container_name: cekemmy-backend
+    restart: unless-stopped
+
+    env_file:
+      - .env.production
+
+    ports:
+      - "3000:3000"
