@@ -5,33 +5,44 @@ import {
   Edit,
   Trash2,
   SquareCheckBig,
+  ArchiveRestore,
+  Info,
+  Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 import { RowData } from "@tanstack/react-table";
-import { Button } from "../../../components/ui/button";
+import { Button } from "../../../../components/ui/button";
 import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenu,
-} from "../../../components/ui/dropdown-menu";
-import { Input } from "../../../components/ui/input";
-import { Checkbox } from "../../../components/ui/checkbox";
-import { Label } from "../../../components/ui/label";
-import { Badge } from "../../../components/ui/badge";
-import { DragHandle } from "../../../components/drag-control";
+} from "../../../../components/ui/dropdown-menu";
+import { Input } from "../../../../components/ui/input";
+import { Checkbox } from "../../../../components/ui/checkbox";
+import { Label } from "../../../../components/ui/label";
+import { Badge } from "../../../../components/ui/badge";
+import { DragHandle } from "../../../../components/drag-control";
 import { OrderStatus } from "@/types/order";
-import { Order } from "../../../types/order";
-import { statusConfig } from "@/lib/utils/statusConfig";
+import { Order } from "../../../../types/order";
+import { statusConfig } from "@/lib/utils/styleConfig";
+import {
+  OrderPaymentStatusLabel,
+  OrderStatusLabel,
+} from "@/lib/utils/orderMapper";
+import { NumericFormat } from "react-number-format";
 
 //daftarkan properti mutation func di properti meta table
 
 declare module "@tanstack/react-table" {
   interface TableMeta<TData extends RowData> {
-    onEdit?: (order: TData) => void;
+    onShowDetail?: (id: string) => void;
+    onEdit?: (data: TData) => void;
     onDelete?: (id: string) => void;
-    onCompleted?: (id: string) => void;
+    onCancel?: (id: string) => void;
+    onComplete?: (id: string) => void;
+    onAllocate?: (order: TData) => void;
     pathName?: string;
   }
 }
@@ -108,14 +119,14 @@ export const orderColumns: ColumnDef<Order>[] = [
           });
         }}
       >
-        <Label htmlFor={`${row.original.id}-target`} className="sr-only">
-          Target
+        <Label htmlFor={`${row.original.id}-customerName`} className="sr-only">
+          Nama Pelanggan
         </Label>
         <Input
           key={row.original.customerName}
           className="h-8 w-full border-transparent bg-transparent text-center shadow-none hover:bg-input/30 focus-visible:border focus-visible:bg-background dark:bg-transparent dark:hover:bg-input/30 dark:focus-visible:bg-input/30"
           defaultValue={row.original.customerName}
-          id={`${row.original.id}-reviewer`}
+          id={`${row.original.id}-customerName`}
         />
       </form>
     ),
@@ -142,7 +153,7 @@ export const orderColumns: ColumnDef<Order>[] = [
                   : ""
               }
             />
-            {config.val}
+            {OrderStatusLabel[row.original.status]}
           </Badge>
         </div>
       );
@@ -163,7 +174,7 @@ export const orderColumns: ColumnDef<Order>[] = [
         <div className="w-full flex justify-center">
           <Badge className={config.className}>
             <Icon className="text white" />
-            {config.val}
+            {OrderPaymentStatusLabel[row.original.paymentStatus]}
           </Badge>
         </div>
       );
@@ -188,17 +199,53 @@ export const orderColumns: ColumnDef<Order>[] = [
           });
         }}
       >
-        <Label htmlFor={`${row.original.id}-target`} className="sr-only">
+        <Label htmlFor={`${row.original.id}-totalAmount`} className="sr-only">
           Target
         </Label>
-        <Input
+        <NumericFormat
+          customInput={Input}
           key={row.original.totalAmount}
+          prefix="Rp. "
+          decimalSeparator=","
+          thousandSeparator="."
           className="h-8 w-full border-transparent bg-transparent text-center shadow-none hover:bg-input/30 focus-visible:border focus-visible:bg-background dark:bg-transparent dark:hover:bg-input/30 dark:focus-visible:bg-input/30"
-          defaultValue={row.original.totalAmount.toLocaleString("id-ID", {
-            style: "currency",
-            currency: "IDR",
-          })}
-          id={`${row.original.id}-target`}
+          value={row.original.totalAmount}
+          id={`${row.original.id}-totalAmount`}
+        />
+      </form>
+    ),
+  },
+  {
+    accessorKey: "paidAmount",
+    header: () => <div className="w-full text-center">Terbayar</div>,
+    meta: {
+      label: "Total Terbayar",
+    },
+    enableColumnFilter: true,
+    enableSorting: true,
+    cell: ({ row }) => (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
+            loading: `Saving ${row.original.paidAmount}`,
+            success: "Done",
+            error: "Error",
+          });
+        }}
+      >
+        <Label htmlFor={`${row.original.id}-paidAmount`} className="sr-only">
+          Target
+        </Label>
+        <NumericFormat
+          customInput={Input}
+          key={row.original.paidAmount}
+          prefix="Rp. "
+          decimalSeparator=","
+          thousandSeparator="."
+          className="h-8 w-full border-transparent bg-transparent text-center shadow-none hover:bg-input/30 focus-visible:border focus-visible:bg-background dark:bg-transparent dark:hover:bg-input/30 dark:focus-visible:bg-input/30"
+          value={row.original.paidAmount}
+          id={`${row.original.id}-paidAmount`}
         />
       </form>
     ),
@@ -222,8 +269,8 @@ export const orderColumns: ColumnDef<Order>[] = [
           });
         }}
       >
-        <Label htmlFor={`${row.original.id}-limit`} className="sr-only">
-          Limit
+        <Label htmlFor={`${row.original.id}-pickupDate`} className="sr-only">
+          Tanggal Pengambilan
         </Label>
         <Input
           key={
@@ -241,7 +288,7 @@ export const orderColumns: ColumnDef<Order>[] = [
                 })
               : ""
           }
-          id={`${row.original.id}-limit`}
+          id={`${row.original.id}-pickupDate`}
         />
       </form>
     ),
@@ -304,6 +351,16 @@ export const orderColumns: ColumnDef<Order>[] = [
                 row
                   .getAllCells()[0]
                   .getContext()
+                  .table.options.meta?.onShowDetail?.(row.original.id);
+              }}
+            >
+              <Info /> Rincian
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                row
+                  .getAllCells()[0]
+                  .getContext()
                   .table.options.meta?.onEdit?.(row.original);
               }}
             >
@@ -314,12 +371,33 @@ export const orderColumns: ColumnDef<Order>[] = [
                 row
                   .getAllCells()[0]
                   .getContext()
-                  .table.options.meta?.onCompleted?.(row.original.id);
+                  .table.options.meta?.onAllocate?.(row.original);
+              }}
+            >
+              <ArchiveRestore /> Alokasikan Stok
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                row
+                  .getAllCells()[0]
+                  .getContext()
+                  .table.options.meta?.onComplete?.(row.original.id);
               }}
             >
               <SquareCheckBig /> Tandai Selesai
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => {
+                row
+                  .getAllCells()[0]
+                  .getContext()
+                  .table.options.meta?.onCancel?.(row.original.id);
+              }}
+            >
+              <Ban /> Batalkan Pesanan
+            </DropdownMenuItem>
             <DropdownMenuItem
               variant="destructive"
               onClick={() => {

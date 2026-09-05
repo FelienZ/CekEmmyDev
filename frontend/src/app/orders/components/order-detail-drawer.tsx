@@ -1,18 +1,18 @@
 "use client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Drawer, DrawerContent } from "../../../components/ui/drawer";
-import { Order } from "@/types/order";
 import OrderDrawerLoading from "@/app/orders/components/order-drawer-loading";
-import OrderForm from "./order-form";
+import { Order } from "@/types/order";
+import OrderDetail from "./order-detail";
 
 interface OrderDrawerProps {
-  order?: Order;
+  order: Order;
   isLoading?: boolean;
   isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (open: boolean, id?: string) => void;
 }
 
-export function OrderDrawer({
+export function OrderDetailDrawer({
   order,
   isOpen,
   isLoading,
@@ -26,10 +26,10 @@ export function OrderDrawer({
       direction={isMobile ? "bottom" : "right"}
     >
       <DrawerContent className="min-h-screen">
-        {isLoading ? (
+        {isLoading || !order ? (
           <OrderDrawerLoading />
         ) : (
-          <OrderForm order={order} onOpenChange={onOpenChange} />
+          <OrderDetail order={order} onOpenChange={onOpenChange} />
         )}
       </DrawerContent>
     </Drawer>

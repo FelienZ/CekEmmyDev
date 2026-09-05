@@ -41,6 +41,10 @@ import { ShoppingCart, PackagePlus, Minus, Plus, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { useForm, useFieldArray, useWatch, Controller } from "react-hook-form";
 import { NumericFormat } from "react-number-format";
+import {
+  OrderPaymentStatusLabel,
+  OrderTypeLabel,
+} from "../../../../lib/utils/orderMapper";
 
 interface OrderFormProps {
   order?: Order;
@@ -237,15 +241,15 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
                     <SelectValue placeholder="Pilih Tipe Pemesanan" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={OrderType.TAKEAWAY}>
-                      Ambil di Tempat
-                    </SelectItem>
-                    <SelectItem value={OrderType.DINE_IN}>
-                      Makan di Tempat
-                    </SelectItem>
-                    <SelectItem value={OrderType.DELIVERY}>
-                      Pengiriman
-                    </SelectItem>
+                    {[
+                      OrderType.DINE_IN,
+                      OrderType.TAKEAWAY,
+                      OrderType.DELIVERY,
+                    ].map((t) => (
+                      <SelectItem value={t} key={t}>
+                        {OrderTypeLabel[t]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               )}
@@ -253,7 +257,11 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
             <FieldError errors={[errors.orderType]} />
           </Field>
           <Field className="flex flex-col gap-2">
-            <DatePickerDropdown control={control} name="pickupDate" />
+            <DatePickerDropdown
+              control={control}
+              name="pickupDate"
+              fieldName="Tanggal Pengambilan"
+            />
             <FieldError errors={[errors.pickupDate]} className="text-xs" />
           </Field>
         </div>
@@ -272,13 +280,15 @@ export default function OrderForm({ order, onOpenChange }: OrderFormProps) {
                   <SelectValue placeholder="Pilih Tipe Pemesanan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={PaymentStatus.UNPAID}>
-                    Belum Bayar
-                  </SelectItem>
-                  <SelectItem value={PaymentStatus.PAID}>
-                    Sudah Bayar
-                  </SelectItem>
-                  <SelectItem value={PaymentStatus.PARTIAL}>Panjar</SelectItem>
+                  {[
+                    PaymentStatus.UNPAID,
+                    PaymentStatus.PARTIAL,
+                    PaymentStatus.PAID,
+                  ].map((p) => (
+                    <SelectItem value={p} key={p}>
+                      {OrderPaymentStatusLabel[p]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}

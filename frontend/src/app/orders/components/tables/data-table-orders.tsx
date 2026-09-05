@@ -71,23 +71,31 @@ import {
   ArrowDownAZ,
 } from "lucide-react";
 
-import { DraggableRow } from "../../../components/drag-control";
+import { DraggableRow } from "../../../../components/drag-control";
 import { Order } from "@/types/order";
-import { useDeleteOrder, useMarkCompleted } from "@/lib/hooks/useOrders";
-import { OrderStatus } from "../../../types/order";
+import {
+  useDeleteOrder,
+  useMarkCanceled,
+  useMarkCompleted,
+  useUpdateOrder,
+} from "@/lib/hooks/useOrders";
+import { OrderStatus } from "../../../../types/order";
 import { usePathname } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "sonner";
 
 interface DataTableProps {
   data: Order[];
   columns: ColumnDef<Order>[];
   onOpenEditOrder?: (order: Order) => void;
+  onOpenDetailOrder?: (id: string) => void;
 }
 
 export function DataTableOrders({
   data: initialData,
   columns,
   onOpenEditOrder,
+  onOpenDetailOrder,
 }: DataTableProps) {
   const [data, setData] = React.useState(initialData);
   const [rowSelection, setRowSelection] = React.useState({});
@@ -100,6 +108,8 @@ export function DataTableOrders({
   const isMobile = useIsMobile();
   const deleteFn = useDeleteOrder();
   const completeFn = useMarkCompleted();
+  const allocateFn = useUpdateOrder();
+  const cancelFn = useMarkCanceled();
   React.useEffect(() => {
     if (initialData) {
       setData(initialData);
@@ -135,6 +145,36 @@ export function DataTableOrders({
     [data],
   );
 
+  function handleAllocateStock(order: Order) {
+    const isBelowStock = order.orderItems
+      .filter((o) => o.quantity > o.product.stock)
+      .map((o) => o.product.name);
+    const rawToast = isBelowStock.join(", ");
+    if (isBelowStock.length > 0)
+      return toast.error(
+        <div className="flex flex-col gap-0.5">
+          <h4 className="font-semibold">
+            Stok Kurang Untuk {isBelowStock.length} Produk:
+          </h4>
+          <p className="text-foreground">{rawToast}</p>
+        </div>,
+      );
+    allocateFn.mutate({
+      id: order.id,
+      payload: {
+        customerName: order.customerName,
+        paymentStatus: order.paymentStatus,
+        paidAmount: order.paidAmount,
+        orderItems: order.orderItems.map((o) => ({
+          productId: o.productId,
+          quantity: o.quantity,
+          preparedQuantity: o.quantity,
+        })),
+        orderType: order.orderType,
+      },
+    });
+  }
+
   const table = useReactTable({
     data,
     columns,
@@ -159,9 +199,12 @@ export function DataTableOrders({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     meta: {
+      onShowDetail: onOpenDetailOrder,
       onEdit: onOpenEditOrder,
-      onCompleted: completeFn.mutate,
+      onComplete: completeFn.mutate,
       onDelete: deleteFn.mutate,
+      onAllocate: (order: Order) => handleAllocateStock(order),
+      onCancel: cancelFn.mutate,
       pathName: pathName,
     },
   });
@@ -346,7 +389,7 @@ export function DataTableOrders({
                 ) : (
                   <TableRow>
                     <TableCell colSpan={columns.length} className="text-center">
-                      No results.
+                      Pesanan Sedang Kosong
                     </TableCell>
                   </TableRow>
                 )}

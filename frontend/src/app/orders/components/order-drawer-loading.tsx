@@ -19,7 +19,7 @@ import { Skeleton } from "../../../components/ui/skeleton";
 
 export default function OrderDrawerLoading() {
   return (
-    <div>
+    <div className="min-h-screen flex flex-col">
       <DrawerHeader className="gap-1 border-b pb-4">
         <DrawerTitle className="line-clamp-2 w-full text-center pb-2">
           Edit Pesanan
