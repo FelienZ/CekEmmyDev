@@ -18,6 +18,20 @@ model ProductCategory {
   updatedAt DateTime @default(now()) @updatedAt
 }
 
+model TransactionCategory {
+  categoryId  String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
+  description String?
+  isActive    Boolean @default(true)
+
+  type         TransactionType
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
 model Product {
   id          String  @id @default(cuid())
   slug        String  @unique
@@ -58,10 +72,28 @@ model Order {
   paymentStatus PaymentStatus @default(UNPAID)
   pickupDate    DateTime?
 
-  orderItems OrderItem[]
+  orderItems  OrderItem[]
+  transaction Transaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Transaction {
+  id String @id @default(cuid())
+
+  amount          Decimal
+  description     String?
+  transactionDate DateTime          @default(now())
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  source          TransactionSource
+
+  categoryId String
+  orderId    String?
+
+  order               Order?              @relation(fields: [orderId], references: [id])
+  transactionCategory TransactionCategory @relation(fields: [categoryId], references: [categoryId])
 }
 
 // tipe static, jarang berubah atau fixed.
@@ -83,4 +115,14 @@ enum OrderType {
   DINE_IN
   TAKEAWAY
   DELIVERY
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionSource {
+  MANUAL
+  ORDER
 }
