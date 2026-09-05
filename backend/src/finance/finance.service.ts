@@ -1,12 +1,15 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { FinanceRepository } from './repositories/finance-repository';
-import { TransactionSource } from '@prisma/client';
+import { Prisma, TransactionSource } from '@prisma/client';
 import { CreateTransactionCategoryDto } from './dto/create-transaction-category.dto';
+import { UpdateTransactionDto } from './dto/update-transaction.dto';
+import { UpdateTransactionCategoryDto } from './dto/update-transaction-category.dto';
 import Slugify from '@/helper/slugify';
 import { PrismaService } from 'prisma/prisma.service';
 
@@ -43,8 +46,15 @@ export class FinanceService {
       isActive: true,
       slug: Slugify(payload.name),
     };
-    const result = await this.repository.createCategory(finalPayload);
-    return result.categoryId;
+    try {
+      const result = await this.repository.createCategory(finalPayload);
+      return result.categoryId;
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        throw new ConflictException('Nama Kategori Sudah digunakan');
+      }
+      throw error;
+    }
   }
   findTransactions() {
     return this.repository.getAll();
@@ -68,8 +78,60 @@ export class FinanceService {
     return data;
   }
 
-  async deleteTransaction(id: string): Promise<string> {
-    await this.repository.delete(id);
-    return 'Berhasil Menghapus Pesanan';
+  async activateCategory(id: string): Promise<string> {
+    const category = await this.repository.getCategoryById(id);
+    if (!category) throw new NotFoundException('Kategori Transaksi Tidak Ditemukan');
+    await this.repository.updateCategoryStatus(id, true);
+    return 'Kategori Transaksi Berhasil Diaktifkan';
+  }
+
+  async deactivateCategory(id: string): Promise<string> {
+    const category = await this.repository.getCategoryById(id);
+    if (!category) throw new NotFoundException('Kategori Transaksi Tidak Ditemukan');
+    await this.repository.updateCategoryStatus(id, false);
+    return 'Kategori Transaksi Berhasil Dinonaktifkan';
+  }
+
+  async updateTransactionMetadata(
+    id: string,
+    payload: UpdateTransactionDto,
+  ): Promise<string> {
+    const existing = await this.repository.getById(id);
+    if (!existing) throw new NotFoundException('Transaksi Tidak Ditemukan');
+
+    const safePayload = {
+      description: payload.description,
+    };
+
+    await this.repository.update(id, safePayload);
+    return 'Metadata Transaksi Berhasil Diperbarui';
+  }
+
+  async updateCategoryMetadata(
+    id: string,
+    payload: UpdateTransactionCategoryDto,
+  ): Promise<string> {
+    const existing = await this.repository.getCategoryById(id);
+    if (!existing)
+      throw new NotFoundException('Kategori Transaksi Tidak Ditemukan');
+
+    const safePayload = {
+      name: payload.name,
+      description: payload.description,
+    };
+
+    try {
+      await this.repository.updateCategory(id, safePayload);
+      return 'Metadata Kategori Berhasil Diperbarui';
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Nama kategori sudah digunakan');
+      }
+
+  throw error;
+    }
   }
 }

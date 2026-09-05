@@ -58,9 +58,16 @@ export class FinanceRepository {
       data: payload,
     });
   }
-  async delete(id: string) {
-    return await this.prisma.transaction.delete({
-      where: { id },
+  async updateCategoryStatus(id: string, isActive: boolean) {
+    return await this.prisma.transactionCategory.update({
+      where: { categoryId: id },
+      data: { isActive },
+    });
+  }
+  async updateCategory(id: string, payload: Prisma.TransactionCategoryUpdateInput) {
+    return await this.prisma.transactionCategory.update({
+      where: { categoryId: id },
+      data: payload,
     });
   }
 }

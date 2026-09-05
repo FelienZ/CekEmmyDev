@@ -1,7 +1,9 @@
-import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch } from '@nestjs/common';
 import { FinanceService } from './finance.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { CreateTransactionCategoryDto } from './dto/create-transaction-category.dto';
+import { UpdateTransactionDto } from './dto/update-transaction.dto';
+import { UpdateTransactionCategoryDto } from './dto/update-transaction-category.dto';
 
 @Controller('finance')
 export class FinanceController {
@@ -45,11 +47,43 @@ export class FinanceController {
     return this.financeService.findTransaction(id);
   }
 
-  @Delete(':id')
-  async deleteTransaction(@Param('id') id: string) {
-    const response = await this.financeService.deleteTransaction(id);
-    return {
-      message: response,
-    };
+  // --- Category PATCH routes MUST come before the generic ':id' PATCH ---
+
+  @Patch('categories/:id/activate')
+  async activateCategory(@Param('id') id: string) {
+    const response = await this.financeService.activateCategory(id);
+    return { message: response };
+  }
+
+  @Patch('categories/:id/deactivate')
+  async deactivateCategory(@Param('id') id: string) {
+    const response = await this.financeService.deactivateCategory(id);
+    return { message: response };
+  }
+
+  @Patch('categories/:id')
+  async updateCategory(
+    @Param('id') id: string,
+    @Body() payload: UpdateTransactionCategoryDto,
+  ) {
+    const response = await this.financeService.updateCategoryMetadata(
+      id,
+      payload,
+    );
+    return { message: response };
+  }
+
+  // --- Generic transaction PATCH must be LAST to avoid swallowing 'categories' as ':id' ---
+
+  @Patch(':id')
+  async updateTransaction(
+    @Param('id') id: string,
+    @Body() payload: UpdateTransactionDto,
+  ) {
+    const response = await this.financeService.updateTransactionMetadata(
+      id,
+      payload,
+    );
+    return { message: response };
   }
 }
