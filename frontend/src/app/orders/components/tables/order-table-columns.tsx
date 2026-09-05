@@ -3,7 +3,6 @@ import { ColumnDef } from "@tanstack/react-table";
 import {
   EllipsisVerticalIcon,
   Edit,
-  Trash2,
   SquareCheckBig,
   ArchiveRestore,
   Info,
@@ -39,7 +38,6 @@ declare module "@tanstack/react-table" {
   interface TableMeta<TData extends RowData> {
     onShowDetail?: (id: string) => void;
     onEdit?: (data: TData) => void;
-    onDelete?: (id: string) => void;
     onCancel?: (id: string) => void;
     onComplete?: (id: string) => void;
     onAllocate?: (order: TData) => void;
@@ -397,17 +395,6 @@ export const orderColumns: ColumnDef<Order>[] = [
               }}
             >
               <Ban /> Batalkan Pesanan
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() => {
-                row
-                  .getAllCells()[0]
-                  .getContext()
-                  .table.options.meta?.onDelete?.(row.original.id);
-              }}
-            >
-              <Trash2 /> Hapus
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

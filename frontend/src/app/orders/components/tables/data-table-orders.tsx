@@ -74,7 +74,6 @@ import {
 import { DraggableRow } from "../../../../components/drag-control";
 import { Order } from "@/types/order";
 import {
-  useDeleteOrder,
   useMarkCanceled,
   useMarkCompleted,
   useUpdateOrder,
@@ -106,7 +105,6 @@ export function DataTableOrders({
   );
   const [activeTab, setActiveTab] = React.useState("all");
   const isMobile = useIsMobile();
-  const deleteFn = useDeleteOrder();
   const completeFn = useMarkCompleted();
   const allocateFn = useUpdateOrder();
   const cancelFn = useMarkCanceled();
@@ -202,7 +200,6 @@ export function DataTableOrders({
       onShowDetail: onOpenDetailOrder,
       onEdit: onOpenEditOrder,
       onComplete: completeFn.mutate,
-      onDelete: deleteFn.mutate,
       onAllocate: (order: Order) => handleAllocateStock(order),
       onCancel: cancelFn.mutate,
       pathName: pathName,
