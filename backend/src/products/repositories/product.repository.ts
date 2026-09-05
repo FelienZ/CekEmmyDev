@@ -40,6 +40,14 @@ export class ProductRepository {
       },
     });
   }
+  async createCategory(payload: Prisma.ProductCategoryCreateInput) {
+    return this.prisma.productCategory.create({
+      data: payload,
+      select: {
+        categoryId: true,
+      },
+    });
+  }
   async update(id: string, payload: Prisma.ProductUpdateInput) {
     return await this.prisma.product.update({
       where: { id },

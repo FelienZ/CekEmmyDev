@@ -13,5 +13,4 @@ export class GetProductCategoriesDto {
   categoryId!: string;
   name!: string;
   description!: string | null;
-  products!: GetProductResponseDto[];
 }
