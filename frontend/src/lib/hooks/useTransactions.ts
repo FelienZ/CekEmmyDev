@@ -9,6 +9,10 @@ import {
 import { FinanceServices } from "../services/financeServices";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
+import {
+  UpdateTransactionCategoryPayload,
+  UpdateTransactionPayload,
+} from "@/types/payload";
 
 export function useTransactions() {
   return useQuery({
@@ -68,16 +72,84 @@ export function useMakeTransactionCategory() {
   });
 }
 
-export function useDeleteTransaction() {
-  const queryClient = useQueryClient();
+export function useActivateCategory() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => FinanceServices.deleteTransaction(id),
-    onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast.success(data.data?.message);
+    mutationFn: (id: string) => FinanceServices.activateCategory(id),
+    onSuccess: async (data, id) => {
+      await qc.invalidateQueries({ queryKey: ["transaction_categories"] });
+      await qc.invalidateQueries({ queryKey: ["transaction_category", id] });
+      toast.success(data.data?.message ?? "Kategori berhasil diaktifkan");
     },
-    onError: (data) => {
-      toast.error(data.message);
+    onError: (data: AxiosError<{ message: string }>) => {
+      toast.error(data.response?.data.message);
     },
   });
 }
+
+export function useDeactivateCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => FinanceServices.deactivateCategory(id),
+    onSuccess: async (data, id) => {
+      await qc.invalidateQueries({ queryKey: ["transaction_categories"] });
+      await qc.invalidateQueries({ queryKey: ["transaction_category", id] });
+      toast.success(data.data?.message ?? "Kategori berhasil dinonaktifkan");
+    },
+    onError: (data: AxiosError<{ message: string }>) => {
+      toast.error(data.response?.data.message);
+    },
+  });
+}
+
+export function useUpdateTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: UpdateTransactionPayload;
+    }) => FinanceServices.updateTransaction(id, payload),
+    onSuccess: async (data, variables) => {
+      await qc.invalidateQueries({ queryKey: ["transactions"] });
+      await qc.invalidateQueries({ queryKey: ["transaction", variables.id] });
+      toast.success(data.data?.message ?? "Transaksi berhasil diperbarui");
+    },
+    onError: (data: AxiosError<{ message: string }>) => {
+      toast.error(data.response?.data?.message ?? "Gagal memperbarui transaksi");
+    },
+  });
+}
+
+export function useUpdateTransactionCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: UpdateTransactionCategoryPayload;
+    }) => FinanceServices.updateTransactionCategory(id, payload),
+    onSuccess: async (data, variables) => {
+      await qc.invalidateQueries({ queryKey: ["transaction_categories"] });
+      await qc.invalidateQueries({
+        queryKey: ["transaction_category", variables.id],
+      });
+      await qc.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success(
+        typeof data.data === "string"
+          ? data.data
+          : data.data?.message ?? "Kategori berhasil diperbarui",
+      );
+    },
+    onError: (data: AxiosError<{ message: string }>) => {
+      toast.error(
+        data.response?.data?.message ?? "Gagal memperbarui kategori",
+      );
+    },
+  });
+}
+

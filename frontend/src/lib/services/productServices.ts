@@ -25,8 +25,4 @@ export const productServices = {
         const response = await axios.put(`${baseUrl}/${id}`, payload)
         return response
     },
-    deleteProduct: async(id: string) => {
-        const response = await axios.delete(`${baseUrl}/${id}`)
-        return response
-    }
 }

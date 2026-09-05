@@ -2,6 +2,8 @@ import { Transaction, TransactionCategory } from "@/types/finance";
 import {
   CreateTransactionCategory,
   CreateTransactionPayload,
+  UpdateTransactionCategoryPayload,
+  UpdateTransactionPayload,
 } from "@/types/payload";
 import axios from "axios";
 
@@ -34,23 +36,23 @@ export const FinanceServices = {
     const response = await axios.post(`${baseUrl}/categories`, payload);
     return response;
   },
-  /*   updateTransaction: async (id: string, payload: UpdateOrderPayload) => {
-    const response = await axios.put(`${baseUrl}/${id}`, payload);
+  activateCategory: async (id: string) => {
+    const response = await axios.patch(`${baseUrl}/categories/${id}/activate`);
+    return response;
+  },
+  deactivateCategory: async (id: string) => {
+    const response = await axios.patch(`${baseUrl}/categories/${id}/deactivate`);
+    return response;
+  },
+  updateTransaction: async (id: string, payload: UpdateTransactionPayload) => {
+    const response = await axios.patch(`${baseUrl}/${id}`, payload);
     return response;
   },
   updateTransactionCategory: async (
     id: string,
-    payload: UpdateOrderPayload,
+    payload: UpdateTransactionCategoryPayload,
   ) => {
-    const response = await axios.put(`${baseUrl}/${id}`, payload);
-    return response;
-  }, */
-  cancelTransaction: async (id: string) => {
-    const response = await axios.delete(`${baseUrl}/${id}/cancel`);
-    return response;
-  },
-  deleteTransaction: async (id: string) => {
-    const response = await axios.delete(`${baseUrl}/${id}`);
+    const response = await axios.patch(`${baseUrl}/categories/${id}`, payload);
     return response;
   },
 };

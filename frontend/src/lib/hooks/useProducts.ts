@@ -45,13 +45,3 @@ export function useUpdateProduct(){
         }
     })
 }
-
-export function useDeleteProduct(){
-    const queryClient = useQueryClient()
-    return useMutation({
-        mutationFn: (id:string ) => productServices.deleteProduct(id),
-        onSuccess: async() => {
-            queryClient.invalidateQueries({queryKey: ["products"]})
-        }
-    })
-}

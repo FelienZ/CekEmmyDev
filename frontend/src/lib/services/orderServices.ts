@@ -31,11 +31,7 @@ export const orderServices = {
         return response
     },
     cancelOrder: async(id: string) => {
-        const response = await axios.delete(`${baseUrl}/${id}/cancel`)
+        const response = await axios.patch(`${baseUrl}/${id}/cancel`)
         return response
     },
-    deleteOrder: async(id: string)=>{
-        const response = await axios.delete(`${baseUrl}/${id}`)
-        return response
-    }
 }

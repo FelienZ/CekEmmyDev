@@ -45,6 +45,7 @@ export function useUpdateOrder(){
             await queryClient.invalidateQueries({queryKey: ["orders"]})
             await queryClient.invalidateQueries({queryKey: ["products"]})
             await queryClient.invalidateQueries({queryKey: ["order", args.id]})
+            await queryClient.invalidateQueries({queryKey: ["transactions"]})
             toast.success(data.data?.message)
         },
         onError: (data: AxiosError<{message: string}>)=>{
@@ -93,17 +94,4 @@ export function useUpdatePaymentStatus (){
         }
     })
 }
-
-export function useDeleteOrder(){
-    const queryClient = useQueryClient()
-    return useMutation({
-        mutationFn: (id: string) => orderServices.deleteOrder(id),
-        onSuccess: async (data)=> {
-            await queryClient.invalidateQueries({queryKey: ["orders"]})
-        toast.success(data.data?.message)
-        },
-        onError: (data)=>{
-            toast.error(data.message)
-        }
-    })
-}
+
