@@ -69,9 +69,4 @@ export class ProductRepository {
       });
     }
   }
-  async delete(id: string) {
-    await this.prisma.product.delete({
-      where: { id },
-    });
-  }
 }

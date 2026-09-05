@@ -52,9 +52,4 @@ export class ProductsController {
     return { message: 'Product updated successfully' };
   }
 
-  @Delete('/:id')
-  async deleteProduct(@Param('id') id: string): Promise<{ message: string }> {
-    await this.productService.deleteProduct(id);
-    return { message: 'Product deleted successfully' };
-  }
 }

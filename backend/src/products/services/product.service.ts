@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ProductRepository } from '../repositories/product.repository';
 import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import Slugify from '@/helper/slugify';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ProductService {
@@ -35,22 +40,35 @@ export class ProductService {
         connect: { categoryId },
       },
     };
-    const result = await this.productRepository.create(finalPayload);
-    return result.id;
+    try {
+      const result = await this.productRepository.create(finalPayload);
+      return result.id;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Product name or slug already exists');
+      }
+      throw error;
+    }
   }
   async updateProduct(id: string, payload: UpdateProductDto) {
     const existingProduct = await this.productRepository.findById(id);
     if (!existingProduct) {
       throw new NotFoundException('Product not found');
     }
-    const result = await this.productRepository.update(id, payload);
-    return result.id;
-  }
-  async deleteProduct(id: string) {
-    const existingProduct = await this.productRepository.findById(id);
-    if (!existingProduct) {
-      throw new NotFoundException('Product not found');
+    try {
+      const result = await this.productRepository.update(id, payload);
+      return result.id;
+    } catch (error: any) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Product name or slug already exists');
+      }
+      throw error;
     }
-    await this.productRepository.delete(id);
   }
 }
