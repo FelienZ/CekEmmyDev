@@ -30,6 +30,10 @@ export const orderServices = {
         const response = await axios.patch(`${baseUrl}/${id}/payment`, {paymentStatus: payload})
         return response
     },
+    cancelOrder: async(id: string) => {
+        const response = await axios.delete(`${baseUrl}/${id}/cancel`)
+        return response
+    },
     deleteOrder: async(id: string)=>{
         const response = await axios.delete(`${baseUrl}/${id}`)
         return response
