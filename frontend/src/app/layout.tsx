@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { AppSidebar } from "@/components/app-sidebar";
 import QueryProvider from "@/lib/queryProvider";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const outfit = Outfit({
   variable: "--font-sans",
@@ -52,35 +53,41 @@ export default function RootLayout({
             enableSystem
             // disableTransitionOnChange
           >
-            <SidebarProvider
-              defaultOpen={false}
-              style={
-                {
-                  "--sidebar-width": "calc(var(--spacing) * 72)",
-                  "--header-height": "calc(var(--spacing) * 12)",
-                } as React.CSSProperties
-              }
-            >
-              <AppSidebar
-                name={CompanyProfile.name}
-                logoUrl={CompanyProfile.logoUrl}
-                props={{ variant: "sidebar" }}
-              />
-              <SidebarInset>
-                <SiteHeader
+            <TooltipProvider>
+              <SidebarProvider
+                defaultOpen={true}
+                style={
+                  {
+                    "--sidebar-width": "calc(var(--spacing) * 72)",
+                    "--header-height": "calc(var(--spacing) * 12)",
+                  } as React.CSSProperties
+                }
+              >
+                <AppSidebar
                   name={CompanyProfile.name}
                   logoUrl={CompanyProfile.logoUrl}
+                  props={{ variant: "sidebar" }}
                 />
-                <div className="flex flex-1 flex-col">
-                  <div className="@container/main flex flex-1 flex-col gap-2">
-                    <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-                      {children}
-                      <Toaster position="bottom-right" richColors />
+                <SidebarInset>
+                  <SiteHeader
+                    name={CompanyProfile.name}
+                    logoUrl={CompanyProfile.logoUrl}
+                  />
+                  <div className="flex flex-1 flex-col">
+                    <div className="@container/main flex flex-1 flex-col gap-2">
+                      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+                        {children}
+                        <Toaster
+                          position="bottom-left"
+                          richColors
+                          closeButton
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </SidebarInset>
-            </SidebarProvider>
+                </SidebarInset>
+              </SidebarProvider>
+            </TooltipProvider>
           </ThemeProvider>
         </QueryProvider>
       </body>
