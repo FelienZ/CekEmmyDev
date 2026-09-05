@@ -49,8 +49,11 @@ export class FinanceService {
     try {
       const result = await this.repository.createCategory(finalPayload);
       return result.categoryId;
-    } catch (error: any) {
-      if (error.code === 'P2002') {
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
         throw new ConflictException('Nama Kategori Sudah digunakan');
       }
       throw error;
@@ -80,14 +83,16 @@ export class FinanceService {
 
   async activateCategory(id: string): Promise<string> {
     const category = await this.repository.getCategoryById(id);
-    if (!category) throw new NotFoundException('Kategori Transaksi Tidak Ditemukan');
+    if (!category)
+      throw new NotFoundException('Kategori Transaksi Tidak Ditemukan');
     await this.repository.updateCategoryStatus(id, true);
     return 'Kategori Transaksi Berhasil Diaktifkan';
   }
 
   async deactivateCategory(id: string): Promise<string> {
     const category = await this.repository.getCategoryById(id);
-    if (!category) throw new NotFoundException('Kategori Transaksi Tidak Ditemukan');
+    if (!category)
+      throw new NotFoundException('Kategori Transaksi Tidak Ditemukan');
     await this.repository.updateCategoryStatus(id, false);
     return 'Kategori Transaksi Berhasil Dinonaktifkan';
   }
@@ -131,7 +136,7 @@ export class FinanceService {
         throw new ConflictException('Nama kategori sudah digunakan');
       }
 
-  throw error;
+      throw error;
     }
   }
 }
