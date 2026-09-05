@@ -8,19 +8,23 @@ import { OrderResponseDto } from '../dto/order-response.dto';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { ProductRepository } from '@/products/repositories/product.repository';
 import { UpdateOrderDto } from '../dto/update-order.dto';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus, TransactionSource } from '@prisma/client';
 import { PrismaService } from 'prisma/prisma.service';
 import { OrdersCalculator } from './orders-calculator.service';
 import { OrdersValidator } from './orders-validator.service';
+import { FinanceRepository } from '@/finance/repositories/finance-repository';
+import { OrderTransactionHelper } from './orders-transaction-helper.service';
 
 @Injectable()
 export class OrdersService {
   constructor(
     private ordersRepository: OrdersRepository,
     private productRepository: ProductRepository,
+    private financeRepository: FinanceRepository,
     private prisma: PrismaService,
     private calculator: OrdersCalculator,
     private validator: OrdersValidator,
+    private transactionHelper: OrderTransactionHelper,
   ) {}
   async getOrders(): Promise<OrderResponseDto[]> {
     return this.ordersRepository.findall();
@@ -35,6 +39,14 @@ export class OrdersService {
   async createOrder(order: CreateOrderDto): Promise<string> {
     if (order.orderItems.length === 0) {
       throw new BadRequestException('Invalid Empty Order Items');
+    }
+    if (order.pickupDate) {
+      const isValidDate = this.validator.isValidDate(order.pickupDate);
+      if (!isValidDate) {
+        throw new BadRequestException(
+          'Tanggal Pengambilan Invalid, harus di atas hari ini',
+        );
+      }
     }
     const mergedItem = this.calculator.mergeDuplicateItem(order.orderItems);
     const productIds = mergedItem.map((item) => item.productId); // ada 2 id sama blm termerge (merge dulu)
@@ -52,32 +64,39 @@ export class OrdersService {
       (sum, item) => sum + item.subtotal,
       0,
     );
-    this.validator.checkIsValidPaidAmount(
-      Number(order.paidAmount),
-      totalAmount,
-    );
+    const paidAmount = Number(order.paidAmount);
+    this.validator.checkIsValidPaidAmount(paidAmount, totalAmount);
     let paymentStatus = order.paymentStatus || PaymentStatus.UNPAID;
     paymentStatus = this.calculator.paymentStatusSetter(
-      Number(order.paidAmount),
+      paidAmount,
       totalAmount,
       paymentStatus,
     );
-    if (order.pickupDate) {
-      const isValidDate = this.validator.isValidDate(order.pickupDate);
-      if (!isValidDate) {
-        throw new BadRequestException(
-          'Tanggal Pengambilan Invalid, harus di atas hari ini',
-        );
-      }
-    }
     const finalOrder = this.calculator.buildFinalCreateOrder(
       order,
       orderItems,
       totalAmount,
       paymentStatus,
     );
-    const createdOrder = await this.ordersRepository.create(finalOrder);
-    return createdOrder.id;
+    return await this.prisma.$transaction(async (tx) => {
+      const slug = 'order-sales';
+      const createdOrder = await this.ordersRepository.create(finalOrder, tx);
+      // validasi slug ada di kategori tx, kalau gk ada create, kalau notActive 400
+      const matchedCategory =
+        await this.transactionHelper.ensureOrderSalesCategory(slug, tx);
+      const payload = {
+        source: TransactionSource.ORDER,
+        description: `Pemesanan/Penjualan-${order.customerName}`,
+        amount: paidAmount,
+        transactionCategory: {
+          connect: {
+            categoryId: matchedCategory.categoryId,
+          },
+        },
+      };
+      await this.financeRepository.create(payload, tx);
+      return createdOrder.id;
+    });
   }
 
   async updateOrder(id: string, order: UpdateOrderDto): Promise<string> {
@@ -257,6 +276,35 @@ export class OrdersService {
     await this.ordersRepository.updatePaymentStatus(id, paymentStatus);
 
     return 'Berhasil Memperbarui Status Pembayaran';
+  }
+  async cancelOrder(id: string): Promise<string> {
+    const matchOrder = await this.ordersRepository.findById(id);
+    if (!matchOrder) throw new BadRequestException('Pesanan Tidak Ditemukan');
+    const isNotAllowed = this.validator.isNotAllowedtoUpdate(matchOrder.status);
+    if (isNotAllowed)
+      throw new BadRequestException(
+        'Pesanan selesai/dibatalkan Tidak Dapat diperbarui',
+      );
+    const allocatedItems = matchOrder.orderItems.filter(
+      (o) => Number(o.preparedQuantity) > 0,
+    );
+    // recover item pesanan
+    const changeData = allocatedItems.map((a) => {
+      return { productId: a.productId, change: 0 };
+    });
+    const stockChanges = this.calculator.checkStockChange(
+      matchOrder.orderItems,
+      changeData,
+    );
+    await this.prisma.$transaction(async (tx) => {
+      try {
+        await this.productRepository.allocateProductStock(stockChanges, tx);
+        await this.ordersRepository.updateOrderStatusAsCanceled(id, tx);
+      } catch (error) {
+        console.log(error);
+      }
+    });
+    return 'Berhasil Membatalkan Pesanan';
   }
   async deleteOrder(id: string): Promise<string> {
     await this.ordersRepository.delete(id);
