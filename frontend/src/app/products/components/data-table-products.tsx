@@ -73,7 +73,6 @@ import { RowData } from "@tanstack/react-table";
 import { Product, ProductCategories } from "@/types/product";
 import { Input } from "@/components/ui/input";
 import { usePathname } from "next/navigation";
-import { useDeleteProduct } from "@/lib/hooks/useProducts";
 
 //daftarkan properti label di properti meta table column
 declare module "@tanstack/react-table" {
@@ -102,7 +101,6 @@ export function DataTableProducts({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
-  const deleteFn = useDeleteProduct();
   React.useEffect(() => {
     if (initialData) {
       setData(initialData);
@@ -156,7 +154,6 @@ export function DataTableProducts({
     getFacetedUniqueValues: getFacetedUniqueValues(),
     meta: {
       onEdit: onOpenEdit,
-      onDelete: deleteFn.mutate,
       productName: (id: string) => categories?.find((c) => c.categoryId === id),
       pathName,
     },

@@ -1,6 +1,6 @@
 "use client";
 import { ColumnDef } from "@tanstack/react-table";
-import { EllipsisVerticalIcon, Edit, Bookmark, Trash2 } from "lucide-react";
+import { EllipsisVerticalIcon, Edit, Bookmark } from "lucide-react";
 import { toast } from "sonner";
 import { RowData } from "@tanstack/react-table";
 import { Button } from "../../../components/ui/button";
@@ -23,7 +23,6 @@ import { Product, ProductCategories } from "@/types/product";
 declare module "@tanstack/react-table" {
   interface TableMeta<TData extends RowData> {
     onEdit?: (product: TData) => void;
-    onDelete?: (id: string) => void;
     productName?: (id: string) => ProductCategories | undefined;
     pathName?: string;
   }
@@ -238,18 +237,6 @@ export const productColumns: ColumnDef<Product>[] = [
             </DropdownMenuItem>
             <DropdownMenuItem>
               <Bookmark /> Sematkan
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() =>
-                row
-                  .getAllCells()[0]
-                  .getContext()
-                  .table.options.meta?.onDelete?.(row.original.id)
-              }
-            >
-              <Trash2 /> Hapus
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
