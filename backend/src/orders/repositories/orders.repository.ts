@@ -30,8 +30,11 @@ export class OrdersRepository {
     });
     return order;
   }
-  async create(data: Prisma.OrderCreateInput) {
-    const order = await this.prisma.order.create({
+  async create(
+    data: Prisma.OrderCreateInput,
+    client: Prisma.TransactionClient,
+  ) {
+    const order = await client.order.create({
       data,
     });
     return order;
@@ -52,6 +55,18 @@ export class OrdersRepository {
       where: { id },
       data: {
         status: 'COMPLETED',
+      },
+    });
+    return order;
+  }
+  async updateOrderStatusAsCanceled(
+    id: string,
+    client: Prisma.TransactionClient,
+  ) {
+    const order = await client.order.update({
+      where: { id },
+      data: {
+        status: 'CANCELLED',
       },
     });
     return order;
