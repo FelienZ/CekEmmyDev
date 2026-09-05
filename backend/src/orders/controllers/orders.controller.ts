@@ -63,16 +63,9 @@ export class OrdersController {
       message: 'Berhasil Memperbarui Status Pembayaran',
     };
   }
-  @Delete('/:id/cancel')
+  @Patch('/:id/cancel')
   async cancelOrder(@Param('id') id: string): Promise<{ message: string }> {
     const response = await this.ordersService.cancelOrder(id);
-    return {
-      message: response,
-    };
-  }
-  @Delete('/:id')
-  async deleteOrder(@Param('id') id: string): Promise<{ message: string }> {
-    const response = await this.ordersService.deleteOrder(id);
     return {
       message: response,
     };

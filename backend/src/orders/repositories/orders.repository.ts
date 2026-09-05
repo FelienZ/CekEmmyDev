@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'prisma/prisma.service';
 import { PaymentStatus, Prisma } from '@prisma/client';
+import { PrismaService } from 'prisma/prisma.service';
 
 @Injectable()
 export class OrdersRepository {
@@ -71,16 +71,13 @@ export class OrdersRepository {
     });
     return order;
   }
-  async updatePaymentStatus(id: string, data: PaymentStatus) {
+  async updatePaymentStatus(id: string, paymentStatus: PaymentStatus) {
     const order = await this.prisma.order.update({
       where: { id },
-      data,
+      data: {
+        paymentStatus,
+      },
     });
     return order;
-  }
-  async delete(id: string) {
-    await this.prisma.order.delete({
-      where: { id },
-    });
   }
 }

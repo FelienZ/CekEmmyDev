@@ -81,20 +81,27 @@ export class OrdersService {
     return await this.prisma.$transaction(async (tx) => {
       const slug = 'order-sales';
       const createdOrder = await this.ordersRepository.create(finalOrder, tx);
-      // validasi slug ada di kategori tx, kalau gk ada create, kalau notActive 400
-      const matchedCategory =
-        await this.transactionHelper.ensureOrderSalesCategory(slug, tx);
-      const payload = {
-        source: TransactionSource.ORDER,
-        description: `Pemesanan/Penjualan-${order.customerName}`,
-        amount: paidAmount,
-        transactionCategory: {
-          connect: {
-            categoryId: matchedCategory.categoryId,
+
+      if (paidAmount > 0) {
+        // validasi slug ada di kategori tx, kalau gk ada create, kalau notActive 400
+        const matchedCategory =
+          await this.transactionHelper.ensureOrderSalesCategory(slug, tx);
+        const payload = {
+          source: TransactionSource.ORDER,
+          description: `Pemesanan/Penjualan-${order.customerName}`,
+          amount: paidAmount,
+          order: {
+            connect: { id: createdOrder.id },
           },
-        },
-      };
-      await this.financeRepository.create(payload, tx);
+          transactionCategory: {
+            connect: {
+              categoryId: matchedCategory.categoryId,
+            },
+          },
+        };
+        await this.financeRepository.create(payload, tx);
+      }
+
       return createdOrder.id;
     });
   }
@@ -127,11 +134,22 @@ export class OrdersService {
       throw new BadRequestException('Item Pesanan Invalid, minimal 1 buah');
     }
 
+    const newPaidAmount =
+      order.paidAmount !== undefined
+        ? Number(order.paidAmount)
+        : existingOrder.paidAmount;
+
+    if (newPaidAmount < existingOrder.paidAmount) {
+      throw new BadRequestException('Pengurangan payment amount invalid');
+    }
+
     let paymentStatus = order.paymentStatus || PaymentStatus.UNPAID;
     let currentStatus = existingOrder.status;
 
     /* Masalah Sekarang, kalau order lama ada, dan baru ada blm fully merged */
-    const mergedItems = this.calculator.mergeDuplicateItem(order.orderItems!);
+    const mergedItems = order.orderItems
+      ? this.calculator.mergeDuplicateItem(order.orderItems)
+      : [];
     const productIds = mergedItems?.map((item) => item.productId);
     const products = await this.productRepository.findManyByIds(productIds);
     /* Kalau ada perubahan di items */
@@ -153,12 +171,9 @@ export class OrdersService {
         );
         /* Validasi Status pembayaran */
         const newTotalAmount = OrderItems?.reduce((a, v) => a + v.subtotal, 0);
-        this.validator.checkIsValidPaidAmount(
-          Number(order.paidAmount),
-          newTotalAmount,
-        );
+        this.validator.checkIsValidPaidAmount(newPaidAmount, newTotalAmount);
         paymentStatus = this.calculator.paymentStatusSetter(
-          Number(order.paidAmount),
+          newPaidAmount,
           newTotalAmount,
           paymentStatus,
         );
@@ -189,11 +204,24 @@ export class OrdersService {
           }
         }
         await this.prisma.$transaction(async (tx) => {
-          try {
-            await this.productRepository.allocateProductStock(stockChanges, tx);
-            await this.ordersRepository.update(id, finalupdate, tx);
-          } catch (error) {
-            console.log(error);
+          await this.productRepository.allocateProductStock(stockChanges, tx);
+          await this.ordersRepository.update(id, finalupdate, tx);
+
+          if (newPaidAmount > existingOrder.paidAmount) {
+            const diff = newPaidAmount - existingOrder.paidAmount;
+            const slug = 'order-sales';
+            const matchedCategory =
+              await this.transactionHelper.ensureOrderSalesCategory(slug, tx);
+            const payload = {
+              source: TransactionSource.ORDER,
+              description: `Pembayaran Tambahan Pemesanan/Penjualan-${existingOrder.customerName}`,
+              amount: diff,
+              order: { connect: { id: existingOrder.id } },
+              transactionCategory: {
+                connect: { categoryId: matchedCategory.categoryId },
+              },
+            };
+            await this.financeRepository.create(payload, tx);
           }
         });
         return 'Berhasil Memperbarui Pesanan';
@@ -204,12 +232,9 @@ export class OrdersService {
       (a, v) => a + v.subtotal,
       0,
     );
-    this.validator.checkIsValidPaidAmount(
-      Number(order.paidAmount),
-      totalAmount,
-    );
+    this.validator.checkIsValidPaidAmount(newPaidAmount, totalAmount);
     paymentStatus = this.calculator.paymentStatusSetter(
-      Number(order.paidAmount),
+      newPaidAmount,
       totalAmount,
       paymentStatus,
     );
@@ -233,7 +258,26 @@ export class OrdersService {
       currentStatus,
       undefined,
     );
-    await this.ordersRepository.update(id, finalupdate, this.prisma);
+    await this.prisma.$transaction(async (tx) => {
+      await this.ordersRepository.update(id, finalupdate, tx);
+
+      if (newPaidAmount > existingOrder.paidAmount) {
+        const diff = newPaidAmount - existingOrder.paidAmount;
+        const slug = 'order-sales';
+        const matchedCategory =
+          await this.transactionHelper.ensureOrderSalesCategory(slug, tx);
+        const payload = {
+          source: TransactionSource.ORDER,
+          description: `Pembayaran Tambahan Pemesanan/Penjualan-${existingOrder.customerName}`,
+          amount: diff,
+          order: { connect: { id: existingOrder.id } },
+          transactionCategory: {
+            connect: { categoryId: matchedCategory.categoryId },
+          },
+        };
+        await this.financeRepository.create(payload, tx);
+      }
+    });
     return 'Berhasil Memperbarui Pesanan';
   }
   async updateStatusAsCompleted(id: string): Promise<string> {
@@ -297,17 +341,9 @@ export class OrdersService {
       changeData,
     );
     await this.prisma.$transaction(async (tx) => {
-      try {
-        await this.productRepository.allocateProductStock(stockChanges, tx);
-        await this.ordersRepository.updateOrderStatusAsCanceled(id, tx);
-      } catch (error) {
-        console.log(error);
-      }
+      await this.productRepository.allocateProductStock(stockChanges, tx);
+      await this.ordersRepository.updateOrderStatusAsCanceled(id, tx);
     });
     return 'Berhasil Membatalkan Pesanan';
-  }
-  async deleteOrder(id: string): Promise<string> {
-    await this.ordersRepository.delete(id);
-    return 'Berhasil Menghapus Pesanan';
   }
 }
