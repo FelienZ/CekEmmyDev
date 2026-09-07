@@ -64,7 +64,10 @@ export class FinanceRepository {
       data: { isActive },
     });
   }
-  async updateCategory(id: string, payload: Prisma.TransactionCategoryUpdateInput) {
+  async updateCategory(
+    id: string,
+    payload: Prisma.TransactionCategoryUpdateInput,
+  ) {
     return await this.prisma.transactionCategory.update({
       where: { categoryId: id },
       data: payload,

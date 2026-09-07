@@ -18,6 +18,8 @@ lerna-debug.log*
 
 # Tests
 /coverage
+**.spec* 
+# exclude dulu test
 /.nyc_output
 
 # IDEs and editors

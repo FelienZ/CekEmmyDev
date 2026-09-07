@@ -15,7 +15,7 @@ export class OrdersValidator {
     pickupTime.setHours(0, 0, 0, 0);
     const currentTime = new Date();
     currentTime.setHours(0, 0, 0, 0);
-    return pickupTime > currentTime;
+    return pickupTime >= currentTime;
   }
   isProductNotFound(products: Product[], productIds: string[]) {
     const foundIds = new Set(products.map((p) => p.id));

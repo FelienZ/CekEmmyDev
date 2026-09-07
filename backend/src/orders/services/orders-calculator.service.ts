@@ -137,16 +137,22 @@ export class OrdersCalculator {
     status: OrderStatus,
     orderItems?: ReturnType<typeof this.buildOrderItems>,
   ) {
+    const { orderItems: items, ...restOrder } = order;
+    //kecualikan item jika item undefined di payload
     return {
-      ...order,
+      ...restOrder,
       pickupDate: order.pickupDate ? new Date(order.pickupDate) : undefined,
       paymentStatus: paymentStatus,
       status,
       totalAmount,
-      orderItems: {
-        deleteMany: {},
-        create: orderItems,
-      },
+      ...(orderItems !== undefined
+        ? {
+            orderItems: {
+              deleteMany: {},
+              create: orderItems,
+            },
+          }
+        : {}),
     };
   }
 }

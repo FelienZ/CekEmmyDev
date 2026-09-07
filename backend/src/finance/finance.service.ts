@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -12,6 +11,7 @@ import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { UpdateTransactionCategoryDto } from './dto/update-transaction-category.dto';
 import Slugify from '@/helper/slugify';
 import { PrismaService } from 'prisma/prisma.service';
+import { handlePrismaError } from '@/helper/prisma-error.helper';
 
 @Injectable()
 export class FinanceService {
@@ -50,13 +50,10 @@ export class FinanceService {
       const result = await this.repository.createCategory(finalPayload);
       return result.categoryId;
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException('Nama Kategori Sudah digunakan');
-      }
-      throw error;
+      handlePrismaError(error, {
+        entityName: 'Kategori',
+        conflictMessage: 'Nama Kategori Sudah digunakan',
+      });
     }
   }
   findTransactions() {
@@ -120,23 +117,20 @@ export class FinanceService {
     if (!existing)
       throw new NotFoundException('Kategori Transaksi Tidak Ditemukan');
 
-    const safePayload = {
+    const safePayload: Prisma.TransactionCategoryUpdateInput = {
       name: payload.name,
       description: payload.description,
+      ...(payload.name ? { slug: Slugify(payload.name) } : {}),
     };
 
     try {
       await this.repository.updateCategory(id, safePayload);
       return 'Metadata Kategori Berhasil Diperbarui';
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException('Nama kategori sudah digunakan');
-      }
-
-      throw error;
+      handlePrismaError(error, {
+        entityName: 'Kategori',
+        conflictMessage: 'Nama kategori sudah digunakan',
+      });
     }
   }
 }

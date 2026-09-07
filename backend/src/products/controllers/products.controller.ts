@@ -1,18 +1,11 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-  Put,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import { ProductService } from '../services/product.service';
 import {
   GetProductCategoriesDto,
   GetProductResponseDto,
 } from '../dto/get-response.dto';
 import { CreateProductDto } from '../dto/create-product.dto';
+import { UpdateProductDto } from '../dto/update-product.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -46,10 +39,9 @@ export class ProductsController {
   @Put('/:id')
   async updateProduct(
     @Param('id') id: string,
-    @Body() payload: CreateProductDto,
+    @Body() payload: UpdateProductDto,
   ): Promise<{ message: string }> {
     await this.productService.updateProduct(id, payload);
     return { message: 'Product updated successfully' };
   }
-
 }

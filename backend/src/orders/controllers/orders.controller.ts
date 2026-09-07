@@ -3,7 +3,7 @@ import { OrdersService } from '../services/orders.service';
 import { OrderResponseDto } from '../dto/order-response.dto';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { UpdateOrderDto } from '../dto/update-order.dto';
-import { PaymentStatus } from '@prisma/client';
+import { UpdatePaymentStatusDto } from '../dto/update-payment-status.dto';
 @Controller('orders')
 export class OrdersController {
   constructor(private ordersService: OrdersService) {}
@@ -47,9 +47,9 @@ export class OrdersController {
   @Patch('/:id/payment')
   async updatePaymentStatus(
     @Param('id') id: string,
-    @Body() status: PaymentStatus,
+    @Body() dto: UpdatePaymentStatusDto,
   ): Promise<{ message: string }> {
-    await this.ordersService.updatePaymentStatus(id, status);
+    await this.ordersService.updatePaymentStatus(id, dto.paymentStatus);
     return {
       message: 'Berhasil Memperbarui Status Pembayaran',
     };
