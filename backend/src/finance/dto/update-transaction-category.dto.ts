@@ -1,11 +1,6 @@
-import { IsOptional, IsString } from 'class-validator';
+import { PartialType, OmitType } from '@nestjs/mapped-types';
+import { CreateTransactionCategoryDto } from './create-transaction-category.dto';
 
-export class UpdateTransactionCategoryDto {
-  @IsString()
-  @IsOptional()
-  name?: string;
-
-  @IsString()
-  @IsOptional()
-  description?: string;
-}
+export class UpdateTransactionCategoryDto extends PartialType(
+  OmitType(CreateTransactionCategoryDto, ['type'] as const),
+) {}

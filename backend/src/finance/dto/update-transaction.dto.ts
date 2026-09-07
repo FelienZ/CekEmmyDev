@@ -1,7 +1,6 @@
-import { IsOptional, IsString } from 'class-validator';
+import { PickType } from '@nestjs/mapped-types';
+import { CreateTransactionDto } from './create-transaction.dto';
 
-export class UpdateTransactionDto {
-  @IsString()
-  @IsOptional()
-  description?: string;
-}
+export class UpdateTransactionDto extends PickType(CreateTransactionDto, [
+  'description',
+] as const) {}
