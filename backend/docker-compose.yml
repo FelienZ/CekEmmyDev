@@ -12,5 +12,15 @@ services:
   volumes:
    - cekemmy_db_data:/var/lib/postgresql/data
 
+ backend:
+   image: cekemmy-backend:latest
+   container_name: cekemmy-backend
+   env_file: .env.docker
+   ports:
+   - "3000:3000"
+   depends_on:
+   - postgres
+
+
 volumes:
  cekemmy_db_data:
