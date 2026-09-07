@@ -10,8 +10,8 @@ export class FinanceController {
   constructor(private readonly financeService: FinanceService) {}
 
   @Post()
-  create(@Body() payload: CreateTransactionDto) {
-    const id = this.financeService.create(payload);
+  async create(@Body() payload: CreateTransactionDto) {
+    const id = await this.financeService.create(payload);
     return {
       message: 'Transaksi Berhasil Dibuat',
       data: { id },
@@ -19,8 +19,8 @@ export class FinanceController {
   }
 
   @Post('/categories')
-  createCategory(@Body() payload: CreateTransactionCategoryDto) {
-    const categoryId = this.financeService.createCategory(payload);
+  async createCategory(@Body() payload: CreateTransactionCategoryDto) {
+    const categoryId = await this.financeService.createCategory(payload);
     return {
       message: 'Kategori Transaksi Berhasil Dibuat',
       data: { categoryId },
@@ -28,26 +28,24 @@ export class FinanceController {
   }
 
   @Get()
-  getTransactions() {
+  async getTransactions() {
     return this.financeService.findTransactions();
   }
 
   @Get('categories')
-  getCategories() {
+  async getCategories() {
     return this.financeService.findTransactionCategories();
   }
 
   @Get('categories/:id')
-  getCategory(@Param('id') id: string) {
-    return this.financeService.findTransactionCategory(id);
+  async getCategory(@Param('id') id: string) {
+    return await this.financeService.findTransactionCategory(id);
   }
 
   @Get(':id')
-  getTransaction(@Param('id') id: string) {
-    return this.financeService.findTransaction(id);
+  async getTransaction(@Param('id') id: string) {
+    return await this.financeService.findTransaction(id);
   }
-
-  // --- Category PATCH routes MUST come before the generic ':id' PATCH ---
 
   @Patch('categories/:id/activate')
   async activateCategory(@Param('id') id: string) {
@@ -72,8 +70,6 @@ export class FinanceController {
     );
     return { message: response };
   }
-
-  // --- Generic transaction PATCH must be LAST to avoid swallowing 'categories' as ':id' ---
 
   @Patch(':id')
   async updateTransaction(
