@@ -5,17 +5,28 @@ import { PrismaService } from 'prisma/prisma.service';
 @Injectable()
 export class OrdersRepository {
   constructor(private prisma: PrismaService) {}
-  async findall() {
-    const orders = await this.prisma.order.findMany({
-      include: {
-        orderItems: {
-          include: {
-            product: true,
+  async findAll(params?: { skip?: number; take?: number }) {
+    const skip = params?.skip ?? 0;
+    const take = params?.take ?? 10;
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        skip,
+        take,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        include: {
+          orderItems: {
+            include: {
+              product: true,
+            },
           },
         },
-      },
-    });
-    return orders;
+      }),
+      this.prisma.order.count(),
+    ]);
+    return { data, total };
+  }
+  async findall(params?: { skip?: number; take?: number }) {
+    return this.findAll(params);
   }
   async findById(id: string) {
     const order = await this.prisma.order.findUnique({

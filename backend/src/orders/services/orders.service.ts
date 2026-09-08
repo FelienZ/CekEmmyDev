@@ -14,6 +14,12 @@ import { OrdersCalculator } from './orders-calculator.service';
 import { OrdersValidator } from './orders-validator.service';
 import { FinanceRepository } from '@/finance/repositories/finance-repository';
 import { OrderTransactionHelper } from './orders-transaction-helper.service';
+import {
+  PaginatedResponse,
+  PaginationQueryDto,
+  createPaginatedResponse,
+  normalizePagination,
+} from '@/helper/pagination.dto';
 
 @Injectable()
 export class OrdersService {
@@ -26,8 +32,15 @@ export class OrdersService {
     private validator: OrdersValidator,
     private transactionHelper: OrderTransactionHelper,
   ) {}
-  async getOrders(): Promise<OrderResponseDto[]> {
-    return this.ordersRepository.findall();
+  async getOrders(
+    query?: PaginationQueryDto,
+  ): Promise<PaginatedResponse<OrderResponseDto>> {
+    const { page, limit, skip } = normalizePagination(query);
+    const { data, total } = await this.ordersRepository.findAll({
+      skip,
+      take: limit,
+    });
+    return createPaginatedResponse(data, total, page, limit);
   }
   async getOrderById(id: string): Promise<OrderResponseDto> {
     const order = await this.ordersRepository.findById(id);

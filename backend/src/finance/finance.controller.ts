@@ -1,9 +1,11 @@
-import { Controller, Get, Post, Body, Param, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Query } from '@nestjs/common';
 import { FinanceService } from './finance.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { CreateTransactionCategoryDto } from './dto/create-transaction-category.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { UpdateTransactionCategoryDto } from './dto/update-transaction-category.dto';
+import { PaginatedResponse, PaginationQueryDto } from '@/helper/pagination.dto';
+import { GetFinanceResponseDto } from './dto/get-transaction.dto';
 
 @Controller('finance')
 export class FinanceController {
@@ -28,8 +30,10 @@ export class FinanceController {
   }
 
   @Get()
-  async getTransactions() {
-    return this.financeService.findTransactions();
+  async getTransactions(
+    @Query() query?: PaginationQueryDto,
+  ): Promise<PaginatedResponse<GetFinanceResponseDto>> {
+    return await this.financeService.findTransactions(query);
   }
 
   @Get('categories')

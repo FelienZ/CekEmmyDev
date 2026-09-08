@@ -5,12 +5,25 @@ import { Prisma } from '@prisma/client';
 @Injectable()
 export class FinanceRepository {
   constructor(private prisma: PrismaService) {}
-  async getAll() {
-    return await this.prisma.transaction.findMany({
-      include: {
-        transactionCategory: true,
-      },
-    });
+  async getAll(params?: { skip?: number; take?: number }) {
+    const skip = params?.skip ?? 0;
+    const take = params?.take ?? 10;
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.transaction.findMany({
+        skip,
+        take,
+        orderBy: [
+          { transactionDate: 'desc' },
+          { createdAt: 'desc' },
+          { id: 'desc' },
+        ],
+        include: {
+          transactionCategory: true,
+        },
+      }),
+      this.prisma.transaction.count(),
+    ]);
+    return { data, total };
   }
   async getById(id: string) {
     return await this.prisma.transaction.findUnique({

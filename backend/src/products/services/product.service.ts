@@ -5,12 +5,26 @@ import { UpdateProductDto } from '../dto/update-product.dto';
 import Slugify from '@/helper/slugify';
 import { Prisma } from '@prisma/client';
 import { handlePrismaError } from '@/helper/prisma-error.helper';
+import {
+  PaginatedResponse,
+  PaginationQueryDto,
+  createPaginatedResponse,
+  normalizePagination,
+} from '@/helper/pagination.dto';
+import { GetProductResponseDto } from '../dto/get-response.dto';
 
 @Injectable()
 export class ProductService {
   constructor(private productRepository: ProductRepository) {}
-  async findAllProducts() {
-    return await this.productRepository.findAll();
+  async findAllProducts(
+    query?: PaginationQueryDto,
+  ): Promise<PaginatedResponse<GetProductResponseDto>> {
+    const { page, limit, skip } = normalizePagination(query);
+    const { data, total } = await this.productRepository.findAll({
+      skip,
+      take: limit,
+    });
+    return createPaginatedResponse(data, total, page, limit);
   }
   async findAllProductCategories() {
     return await this.productRepository.findAllCategories();

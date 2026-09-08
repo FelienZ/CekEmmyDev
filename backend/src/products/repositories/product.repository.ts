@@ -5,8 +5,18 @@ import { PrismaService } from 'prisma/prisma.service';
 @Injectable()
 export class ProductRepository {
   constructor(private prisma: PrismaService) {}
-  async findAll() {
-    return this.prisma.product.findMany();
+  async findAll(params?: { skip?: number; take?: number }) {
+    const skip = params?.skip ?? 0;
+    const take = params?.take ?? 10;
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.product.findMany({
+        skip,
+        take,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      }),
+      this.prisma.product.count(),
+    ]);
+    return { data, total };
   }
   async findAllCategories() {
     return this.prisma.productCategory.findMany({

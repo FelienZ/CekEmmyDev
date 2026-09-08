@@ -1,15 +1,27 @@
-import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { OrdersService } from '../services/orders.service';
 import { OrderResponseDto } from '../dto/order-response.dto';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { UpdateOrderDto } from '../dto/update-order.dto';
 import { UpdatePaymentStatusDto } from '../dto/update-payment-status.dto';
+import { PaginatedResponse, PaginationQueryDto } from '@/helper/pagination.dto';
 @Controller('orders')
 export class OrdersController {
   constructor(private ordersService: OrdersService) {}
   @Get()
-  async getOrders(): Promise<OrderResponseDto[]> {
-    return await this.ordersService.getOrders();
+  async getOrders(
+    @Query() query?: PaginationQueryDto,
+  ): Promise<PaginatedResponse<OrderResponseDto>> {
+    return await this.ordersService.getOrders(query);
   }
   @Get('/:id')
   async getOrderById(@Param('id') id: string): Promise<OrderResponseDto> {

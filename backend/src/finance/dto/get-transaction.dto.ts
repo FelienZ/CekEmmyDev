@@ -5,7 +5,7 @@ export class GetFinanceResponseDto {
   description!: string | null;
   amount!: number;
   categoryId!: string;
-  transactionDate!: Date | null;
+  transactionDate!: Date;
   source!: TransactionSource;
 }
 

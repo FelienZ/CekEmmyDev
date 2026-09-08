@@ -12,6 +12,14 @@ import { UpdateTransactionCategoryDto } from './dto/update-transaction-category.
 import Slugify from '@/helper/slugify';
 import { PrismaService } from 'prisma/prisma.service';
 import { handlePrismaError } from '@/helper/prisma-error.helper';
+import {
+  PaginatedResponse,
+  PaginationQueryDto,
+  createPaginatedResponse,
+  normalizePagination,
+} from '@/helper/pagination.dto';
+import { GetFinanceResponseDto } from './dto/get-transaction.dto';
+import { mapTransactionToResponseDto } from './finance.mapper';
 
 @Injectable()
 export class FinanceService {
@@ -59,8 +67,21 @@ export class FinanceService {
       });
     }
   }
-  findTransactions() {
-    return this.repository.getAll();
+  async findTransactions(
+    query?: PaginationQueryDto,
+  ): Promise<PaginatedResponse<GetFinanceResponseDto>> {
+    const { page, limit, skip } = normalizePagination(query);
+    const { data, total } = await this.repository.getAll({
+      skip,
+      take: limit,
+    });
+    const mappedData = data.map(mapTransactionToResponseDto);
+    return createPaginatedResponse(
+      mappedData,
+      total,
+      page,
+      limit,
+    );
   }
   async findTransaction(id: string) {
     const data = await this.repository.getById(id);
