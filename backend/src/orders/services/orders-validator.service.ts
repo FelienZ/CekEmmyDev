@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { OrderStatus, Product } from '@prisma/client';
+import { isBusinessDateOnOrAfterToday } from '@/helper/date.helper';
 
 @Injectable()
 export class OrdersValidator {
@@ -10,12 +11,12 @@ export class OrdersValidator {
       currentStatus === OrderStatus.CANCELLED
     );
   }
-  isValidDate(pickupDate: Date | string) {
-    const pickupTime = new Date(pickupDate);
-    pickupTime.setHours(0, 0, 0, 0);
-    const currentTime = new Date();
-    currentTime.setHours(0, 0, 0, 0);
-    return pickupTime >= currentTime;
+  // Pickup date dibandingkan berdasarkan calendar date di business timezone.
+  isValidDate(
+    pickupDate: Date | string | null | undefined,
+    referenceNow?: Date,
+  ) {
+    return isBusinessDateOnOrAfterToday(pickupDate, referenceNow);
   }
   isProductNotFound(products: Product[], productIds: string[]) {
     const foundIds = new Set(products.map((p) => p.id));

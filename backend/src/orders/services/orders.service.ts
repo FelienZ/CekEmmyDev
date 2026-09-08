@@ -44,7 +44,7 @@ export class OrdersService {
       const isValidDate = this.validator.isValidDate(order.pickupDate);
       if (!isValidDate) {
         throw new BadRequestException(
-          'Tanggal Pengambilan Invalid, harus di atas hari ini',
+          'Tanggal pengambilan tidak boleh sebelum hari ini',
         );
       }
     }
@@ -90,6 +90,7 @@ export class OrdersService {
           source: TransactionSource.ORDER,
           description: `Pemesanan/Penjualan-${order.customerName}`,
           amount: paidAmount,
+          transactionDate: new Date(),
           order: {
             connect: { id: createdOrder.id },
           },
@@ -122,7 +123,7 @@ export class OrdersService {
       const isValidDate = this.validator.isValidDate(order.pickupDate);
       if (!isValidDate) {
         throw new BadRequestException(
-          'Tanggal Pengambilan di bawah hari ini Invalid',
+          'Tanggal pengambilan tidak boleh sebelum hari ini',
         );
       }
     }
@@ -216,6 +217,7 @@ export class OrdersService {
               source: TransactionSource.ORDER,
               description: `Pembayaran Tambahan Pemesanan/Penjualan-${existingOrder.customerName}`,
               amount: diff,
+              transactionDate: new Date(),
               order: { connect: { id: existingOrder.id } },
               transactionCategory: {
                 connect: { categoryId: matchedCategory.categoryId },
@@ -270,6 +272,7 @@ export class OrdersService {
           source: TransactionSource.ORDER,
           description: `Pembayaran Tambahan Pemesanan/Penjualan-${existingOrder.customerName}`,
           amount: diff,
+          transactionDate: new Date(),
           order: { connect: { id: existingOrder.id } },
           transactionCategory: {
             connect: { categoryId: matchedCategory.categoryId },

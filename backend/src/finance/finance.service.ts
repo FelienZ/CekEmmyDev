@@ -30,6 +30,9 @@ export class FinanceService {
     }
     const finalPayload = {
       ...rawPayload,
+      transactionDate: rawPayload.transactionDate
+        ? new Date(rawPayload.transactionDate)
+        : undefined,
       source: source ? source : TransactionSource.MANUAL,
       transactionCategory: {
         connect: {
