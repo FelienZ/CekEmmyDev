@@ -7,7 +7,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-async function main() {
+/* async function main() {
   await prisma.productCategory.upsert({
     where: {
       name: 'Pempek',
@@ -42,3 +42,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+ */

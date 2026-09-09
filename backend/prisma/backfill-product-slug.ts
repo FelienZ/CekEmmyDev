@@ -2,13 +2,15 @@ import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
-import Slugify from '@/helper/slugify';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-async function main() {
+
+// udah digunakan dan untuk slug tidak boleh null, jadi jika ada data yang slugnya null maka akan error
+
+/* async function main() {
   const categories = await prisma.productCategory.findMany({
     where: {
       slug: null,
@@ -96,4 +98,4 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
-  });
+  }); */
