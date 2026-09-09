@@ -20,8 +20,25 @@ export class ProductRepository {
   }
   async findAllCategories() {
     return this.prisma.productCategory.findMany({
-      include: {
-        products: true,
+      select: {
+        categoryId: true,
+        name: true,
+        slug: true,
+        description: true,
+        isActive: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+  async findCategoryById(categoryId: string) {
+    return this.prisma.productCategory.findUnique({
+      where: { categoryId },
+      select: {
+        categoryId: true,
+        name: true,
+        slug: true,
+        description: true,
+        isActive: true,
       },
     });
   }
@@ -55,6 +72,32 @@ export class ProductRepository {
       data: payload,
       select: {
         categoryId: true,
+      },
+    });
+  }
+  async updateCategory(
+    categoryId: string,
+    payload: Prisma.ProductCategoryUpdateInput,
+  ) {
+    return this.prisma.productCategory.update({
+      where: { categoryId },
+      data: payload,
+      select: {
+        categoryId: true,
+        name: true,
+        slug: true,
+        description: true,
+        isActive: true,
+      },
+    });
+  }
+  async updateCategoryStatus(categoryId: string, isActive: boolean) {
+    return this.prisma.productCategory.update({
+      where: { categoryId },
+      data: { isActive },
+      select: {
+        categoryId: true,
+        isActive: true,
       },
     });
   }

@@ -16,8 +16,8 @@ export function mapTransactionToResponseDto(
   const amount =
     typeof rawAmount === 'number'
       ? rawAmount
-      : typeof (rawAmount as Prisma.Decimal)?.toNumber === 'function'
-        ? (rawAmount as Prisma.Decimal).toNumber()
+      : typeof rawAmount?.toNumber === 'function'
+        ? rawAmount.toNumber()
         : Number(rawAmount) || 0;
 
   return {

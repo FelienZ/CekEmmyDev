@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { ProductService } from '../services/product.service';
 import {
   GetProductCategoriesDto,
@@ -6,6 +15,9 @@ import {
 } from '../dto/get-response.dto';
 import { CreateProductDto } from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
+import { CreateProductCategoryDto } from '../dto/create-product-category.dto';
+import { UpdateProductCategoryDto } from '../dto/update-product-category.dto';
+import { UpdateProductCategoryStatusDto } from '../dto/update-product-category-status.dto';
 import { PaginatedResponse, PaginationQueryDto } from '@/helper/pagination.dto';
 
 @Controller('products')
@@ -19,9 +31,56 @@ export class ProductsController {
     return await this.productService.findAllProducts(query);
   }
 
-  @Get('productcategories')
+  @Get(['categories', 'productcategories'])
   async findAllCategories(): Promise<GetProductCategoriesDto[]> {
     return await this.productService.findAllProductCategories();
+  }
+
+  @Post(['categories', 'productcategories'])
+  async createCategory(
+    @Body() payload: CreateProductCategoryDto,
+  ): Promise<{ message: string; data: { categoryId: string } }> {
+    const categoryId = await this.productService.createProductCategory(payload);
+    return {
+      message: 'Kategori Produk Berhasil Dibuat',
+      data: { categoryId },
+    };
+  }
+
+  @Put(['categories/:categoryId', 'productcategories/:categoryId'])
+  async updateCategory(
+    @Param('categoryId') categoryId: string,
+    @Body() payload: UpdateProductCategoryDto,
+  ): Promise<{ message: string; data: { categoryId: string } }> {
+    const updatedId = await this.productService.updateProductCategory(
+      categoryId,
+      payload,
+    );
+    return {
+      message: 'Kategori Produk Berhasil Diperbarui',
+      data: { categoryId: updatedId },
+    };
+  }
+
+  @Patch([
+    'categories/:categoryId/status',
+    'productcategories/:categoryId/status',
+  ])
+  async updateCategoryStatus(
+    @Param('categoryId') categoryId: string,
+    @Body() payload: UpdateProductCategoryStatusDto,
+  ): Promise<{
+    message: string;
+    data: { categoryId: string; isActive: boolean };
+  }> {
+    const updatedId = await this.productService.updateProductCategoryStatus(
+      categoryId,
+      payload,
+    );
+    return {
+      message: 'Status Kategori Produk Berhasil Diperbarui',
+      data: { categoryId: updatedId, isActive: payload.isActive },
+    };
   }
 
   @Get('/:id')

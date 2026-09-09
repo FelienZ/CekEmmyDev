@@ -33,8 +33,11 @@ export class FinanceService {
   ): Promise<string> {
     const { categoryId, ...rawPayload } = payload;
     const matchCategory = await this.repository.getCategoryById(categoryId);
-    if (!matchCategory || matchCategory === null) {
-      throw new BadRequestException('Kategori Transaksi Invalid');
+    if (!matchCategory) {
+      throw new NotFoundException('Kategori Transaksi Tidak Ditemukan');
+    }
+    if (!matchCategory.isActive) {
+      throw new BadRequestException('Kategori transaksi tidak aktif');
     }
     const finalPayload = {
       ...rawPayload,
@@ -76,12 +79,7 @@ export class FinanceService {
       take: limit,
     });
     const mappedData = data.map(mapTransactionToResponseDto);
-    return createPaginatedResponse(
-      mappedData,
-      total,
-      page,
-      limit,
-    );
+    return createPaginatedResponse(mappedData, total, page, limit);
   }
   async findTransaction(id: string) {
     const data = await this.repository.getById(id);

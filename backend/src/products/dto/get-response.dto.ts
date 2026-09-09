@@ -12,5 +12,7 @@ export class GetProductResponseDto {
 export class GetProductCategoriesDto {
   categoryId!: string;
   name!: string;
+  slug!: string | null;
   description!: string | null;
+  isActive!: boolean;
 }
