@@ -44,7 +44,7 @@ export class UserService {
 
     const createData: Prisma.UserCreateInput = {
       name: dto.name.trim(),
-      phone: normalizedPhone,
+      phoneNumber: normalizedPhone,
       email: normalizedEmail,
       role: UserRole.CUSTOMER,
       status: UserStatus.PENDING_ACTIVATION,
@@ -69,26 +69,16 @@ export class UserService {
       throw new NotFoundException('User tidak ditemukan');
     }
 
+    if (dto.phone !== undefined || dto.email !== undefined) {
+      throw new BadRequestException(
+        'Perubahan nomor telepon atau email harus melalui alur verifikasi Auth',
+      );
+    }
+
     const updateData: Prisma.UserUpdateInput = {};
 
     if (dto.name !== undefined) {
       updateData.name = dto.name.trim();
-    }
-
-    if (dto.phone !== undefined) {
-      const normalizedPhone = normalizePhoneNumber(dto.phone);
-      if (normalizedPhone !== existingUser.phone) {
-        updateData.phone = normalizedPhone;
-        updateData.phoneVerifiedAt = null;
-      }
-    }
-
-    if (dto.email !== undefined) {
-      const normalizedEmail = normalizeEmail(dto.email);
-      if (normalizedEmail !== existingUser.email) {
-        updateData.email = normalizedEmail;
-        updateData.emailVerifiedAt = null;
-      }
     }
 
     try {

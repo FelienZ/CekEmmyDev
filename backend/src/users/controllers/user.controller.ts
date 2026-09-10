@@ -8,7 +8,7 @@ import {
   Put,
   Query,
   Req,
-  UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { UserActor, UserService } from '../services/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
@@ -16,6 +16,9 @@ import { UpdateUserProfileDto } from '../dto/update-user-profile.dto';
 import { UpdateUserRoleDto } from '../dto/update-user-role.dto';
 import { UpdateUserStatusDto } from '../dto/update-user-status.dto';
 import { QueryUserDto } from '../dto/query-user.dto';
+import { UserResponseDto } from '../dto/user-response.dto';
+import { AuthGuard } from '@/auth/guards/auth.guard';
+import { CurrentUser } from '@/auth/decorators/current-user.decorator';
 import { Request } from 'express';
 
 interface AuthenticatedRequest extends Request {
@@ -27,26 +30,18 @@ export class UserController {
   constructor(private userService: UserService) {}
 
   @Get('me')
-  async getMe(@Req() req: AuthenticatedRequest) {
-    if (!req.user) {
-      throw new UnauthorizedException(
-        'Autentikasi belum tersedia pada milestone ini',
-      );
-    }
-    return await this.userService.findById(req.user.id);
+  @UseGuards(AuthGuard)
+  async getMe(@CurrentUser() user: UserResponseDto) {
+    return await this.userService.findById(user.id);
   }
 
   @Put('me')
+  @UseGuards(AuthGuard)
   async updateMe(
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: UserResponseDto,
     @Body() dto: UpdateUserProfileDto,
   ) {
-    if (!req.user) {
-      throw new UnauthorizedException(
-        'Autentikasi belum tersedia pada milestone ini',
-      );
-    }
-    return await this.userService.updateProfile(req.user.id, dto);
+    return await this.userService.updateProfile(user.id, dto);
   }
 
   @Get()
