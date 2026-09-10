@@ -1,0 +1,1 @@
+export const AUTH_INSTANCE = 'BETTER_AUTH_INSTANCE';

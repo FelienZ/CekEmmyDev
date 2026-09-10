@@ -1,0 +1,294 @@
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  HttpException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { UserRole, UserStatus } from '@prisma/client';
+import { UserRepository } from '@/users/repositories/user.repository';
+import { PrismaService } from 'prisma/prisma.service';
+import { normalizeEmail, normalizePhoneNumber } from '@/helper/phone.helper';
+import { AUTH_INSTANCE } from './auth.constants';
+import type { BetterAuthInstance } from './auth.config';
+import { LoginDto } from './dto/login.dto';
+import { SetPasswordDto } from './dto/set-password.dto';
+import { RegisterPhoneDto } from './dto/register-phone.dto';
+import { VerifyPhoneOtpDto } from './dto/verify-phone-otp.dto';
+import { RegisterEmailDto } from './dto/register-email.dto';
+import { VerifyEmailOtpDto } from './dto/verify-email-otp.dto';
+
+function isUnauthorizedError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const anyErr = err as Record<string, unknown>;
+  return (
+    anyErr.status === 'UNAUTHORIZED' ||
+    anyErr.statusCode === 401 ||
+    anyErr.name === 'APIError'
+  );
+}
+
+@Injectable()
+export class AuthService {
+  constructor(
+    @Inject(AUTH_INSTANCE) private auth: BetterAuthInstance,
+    private userRepository: UserRepository,
+    private prisma: PrismaService,
+  ) {}
+
+  async login(dto: LoginDto, headers?: Headers): Promise<Response> {
+    const isEmail = dto.identifier.includes('@');
+    let response: Response;
+
+    if (isEmail) {
+      const normalizedEmail = normalizeEmail(dto.identifier);
+      if (!normalizedEmail) {
+        throw new BadRequestException('Format email tidak valid');
+      }
+
+      try {
+        response = await this.auth.api.signInEmail({
+          body: {
+            email: normalizedEmail,
+            password: dto.password,
+          },
+          headers,
+          asResponse: true,
+        });
+      } catch (err: unknown) {
+        if (err instanceof HttpException) throw err;
+        if (isUnauthorizedError(err)) {
+          throw new UnauthorizedException(
+            'Email atau password yang Anda masukkan salah',
+          );
+        }
+        throw err;
+      }
+    } else {
+      const normalizedPhone = normalizePhoneNumber(dto.identifier);
+      if (!normalizedPhone) {
+        throw new BadRequestException('Format nomor telepon tidak valid');
+      }
+
+      try {
+        response = await this.auth.api.signInPhoneNumber({
+          body: {
+            phoneNumber: normalizedPhone,
+            password: dto.password,
+          },
+          headers,
+          asResponse: true,
+        });
+      } catch (err: unknown) {
+        if (err instanceof HttpException) throw err;
+        if (isUnauthorizedError(err)) {
+          throw new UnauthorizedException(
+            'Nomor telepon atau password yang Anda masukkan salah',
+          );
+        }
+        throw err;
+      }
+    }
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new UnauthorizedException(
+          isEmail
+            ? 'Email atau password yang Anda masukkan salah'
+            : 'Nomor telepon atau password yang Anda masukkan salah',
+        );
+      }
+      throw new UnauthorizedException('Gagal melakukan autentikasi');
+    }
+
+    // Identity verified! Now inspect domain status to enforce lifecycle without user enumeration
+    const cloned = response.clone();
+    const payload = (await cloned.json().catch(() => null)) as {
+      token?: string;
+      user?: { id: string };
+    } | null;
+
+    if (payload?.user?.id) {
+      const user = await this.userRepository.findById(payload.user.id);
+      if (user) {
+        if (user.status === UserStatus.PENDING_ACTIVATION) {
+          if (payload.token) {
+            await this.prisma.session.deleteMany({
+              where: { token: payload.token },
+            });
+          }
+          throw new ForbiddenException(
+            'Akun belum aktif. Selesaikan verifikasi dan pembuatan password',
+          );
+        }
+
+        if (user.status === UserStatus.INACTIVE) {
+          if (payload.token) {
+            await this.prisma.session.deleteMany({
+              where: { token: payload.token },
+            });
+          }
+          throw new ForbiddenException(
+            'Akun dinonaktifkan. Hubungi administrator',
+          );
+        }
+      }
+    }
+
+    return response;
+  }
+
+  async setPassword(dto: SetPasswordDto, headers?: Headers, userId?: string) {
+    const reqHeaders = headers ?? new Headers();
+
+    await this.auth.api.setPassword({
+      body: {
+        newPassword: dto.newPassword,
+      },
+      headers: reqHeaders,
+    });
+
+    let targetUserId = userId;
+    if (!targetUserId) {
+      const session = await this.auth.api.getSession({ headers: reqHeaders });
+      if (!session || !session.user) {
+        throw new UnauthorizedException('Sesi tidak valid atau telah berakhir');
+      }
+      targetUserId = session.user.id;
+    }
+
+    const user = await this.userRepository.findById(targetUserId);
+    if (!user) {
+      throw new UnauthorizedException('User tidak ditemukan');
+    }
+
+    if (user.status === UserStatus.PENDING_ACTIVATION) {
+      await this.userRepository.updateStatus(user.id, UserStatus.ACTIVE);
+    }
+
+    const updatedUser = await this.userRepository.findById(user.id);
+    return {
+      message: 'Password berhasil dibuat dan akun telah aktif',
+      user: updatedUser,
+    };
+  }
+
+  async registerPhone(dto: RegisterPhoneDto) {
+    const normalizedPhone = normalizePhoneNumber(dto.phone);
+    if (!normalizedPhone) {
+      throw new BadRequestException('Format nomor telepon tidak valid');
+    }
+
+    const existingUser = await this.userRepository.findByPhone(normalizedPhone);
+    if (existingUser && existingUser.status === UserStatus.ACTIVE) {
+      throw new ConflictException(
+        'Nomor telepon sudah terdaftar dan aktif. Silakan login langsung',
+      );
+    }
+
+    await this.auth.api.sendPhoneNumberOTP({
+      body: {
+        phoneNumber: normalizedPhone,
+      },
+    });
+
+    return {
+      message: 'Kode OTP telah dikirim ke nomor telepon',
+      phone: normalizedPhone,
+    };
+  }
+
+  async verifyPhoneOtp(
+    dto: VerifyPhoneOtpDto,
+    headers?: Headers,
+  ): Promise<Response> {
+    const normalizedPhone = normalizePhoneNumber(dto.phone);
+    if (!normalizedPhone) {
+      throw new BadRequestException('Format nomor telepon tidak valid');
+    }
+
+    const response = await this.auth.api.verifyPhoneNumber({
+      body: {
+        phoneNumber: normalizedPhone,
+        code: dto.code,
+      },
+      headers,
+      asResponse: true,
+    });
+
+    if (!response.ok) {
+      throw new BadRequestException('Kode OTP salah atau telah kadaluarsa');
+    }
+
+    return response;
+  }
+
+  async registerEmail(dto: RegisterEmailDto) {
+    const normalizedEmail = normalizeEmail(dto.email);
+    if (!normalizedEmail) {
+      throw new BadRequestException('Format email tidak valid');
+    }
+
+    const existingUser = await this.userRepository.findByEmail(normalizedEmail);
+    if (existingUser) {
+      if (existingUser.status === UserStatus.ACTIVE) {
+        throw new ConflictException(
+          'Email sudah terdaftar dan aktif. Silakan login langsung',
+        );
+      }
+    } else {
+      await this.userRepository.create({
+        name: dto.name?.trim() || normalizedEmail.split('@')[0],
+        email: normalizedEmail,
+        role: UserRole.CUSTOMER,
+        status: UserStatus.PENDING_ACTIVATION,
+      });
+    }
+
+    await this.auth.api.sendVerificationOTP({
+      body: {
+        email: normalizedEmail,
+        type: 'email-verification',
+      },
+    });
+
+    return {
+      message: 'Kode OTP telah dikirim ke alamat email',
+      email: normalizedEmail,
+    };
+  }
+
+  async verifyEmailOtp(
+    dto: VerifyEmailOtpDto,
+    headers?: Headers,
+  ): Promise<Response> {
+    const normalizedEmail = normalizeEmail(dto.email);
+    if (!normalizedEmail) {
+      throw new BadRequestException('Format email tidak valid');
+    }
+
+    const response = await this.auth.api.verifyEmailOTP({
+      body: {
+        email: normalizedEmail,
+        otp: dto.otp,
+      },
+      headers,
+      asResponse: true,
+    });
+
+    if (!response.ok) {
+      throw new BadRequestException('Kode OTP salah atau telah kadaluarsa');
+    }
+
+    return response;
+  }
+
+  async signOut(headers?: Headers): Promise<Response> {
+    return await this.auth.api.signOut({
+      headers: headers ?? new Headers(),
+      asResponse: true,
+    });
+  }
+}
