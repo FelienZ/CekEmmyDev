@@ -112,6 +112,11 @@ export class FinanceService {
     const category = await this.repository.getCategoryById(id);
     if (!category)
       throw new NotFoundException('Kategori Transaksi Tidak Ditemukan');
+    if (category.slug === 'order-sales') {
+      throw new BadRequestException(
+        'Kategori sistem "order-sales" tidak dapat dinonaktifkan',
+      );
+    }
     await this.repository.updateCategoryStatus(id, false);
     return 'Kategori Transaksi Berhasil Dinonaktifkan';
   }
