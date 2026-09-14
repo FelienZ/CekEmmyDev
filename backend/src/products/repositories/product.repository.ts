@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from 'prisma/prisma.service';
 
@@ -111,15 +115,61 @@ export class ProductRepository {
     changes: { productId: string; change: number }[],
     client: Prisma.TransactionClient,
   ) {
-    for (const change of changes) {
-      await client.product.update({
-        where: { id: change.productId },
-        data: {
-          stock: {
-            increment: change.change,
+    const sortedChanges = [...changes].sort((a, b) =>
+      a.productId.localeCompare(b.productId),
+    );
+
+    for (const change of sortedChanges) {
+      if (change.change < 0) {
+        const needed = Math.abs(change.change);
+        const result = await client.product.updateMany({
+          where: {
+            id: change.productId,
+            stock: {
+              gte: needed,
+            },
           },
-        },
-      });
+          data: {
+            stock: {
+              decrement: needed,
+            },
+          },
+        });
+
+        if (result.count === 0) {
+          const product = await client.product.findUnique({
+            where: { id: change.productId },
+            select: { id: true, name: true, stock: true },
+          });
+
+          if (!product) {
+            throw new NotFoundException(
+              `Produk dengan ID ${change.productId} tidak ditemukan`,
+            );
+          }
+
+          throw new BadRequestException(
+            `Alokasi stok invalid untuk produk "${product.name}", stok saat ini (${product.stock}) tidak mencukupi kebutuhan (${needed})`,
+          );
+        }
+      } else if (change.change > 0) {
+        const result = await client.product.updateMany({
+          where: {
+            id: change.productId,
+          },
+          data: {
+            stock: {
+              increment: change.change,
+            },
+          },
+        });
+
+        if (result.count === 0) {
+          throw new NotFoundException(
+            `Produk dengan ID ${change.productId} tidak ditemukan`,
+          );
+        }
+      }
     }
   }
 }
