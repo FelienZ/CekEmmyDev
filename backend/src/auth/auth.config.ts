@@ -44,6 +44,19 @@ export function createBetterAuth(
         });
       },
     },
+    rateLimit: {
+      enabled: true,
+      window: 10,
+      max: 100,
+      storage: 'memory',
+      customRules: {
+        '/sign-in/*': { window: 60, max: 10 },
+        '/email-otp/send-verification-otp': { window: 60, max: 3 },
+        '/phone-number/send-otp': { window: 60, max: 3 },
+        '/phone-number/verify': { window: 60, max: 10 },
+        '/email-otp/verify-email': { window: 60, max: 10 },
+      },
+    },
     plugins: [
       phoneNumber({
         sendOTP: async ({ phoneNumber, code }) => {
@@ -54,6 +67,9 @@ export function createBetterAuth(
             `${phone}@phone-auth.internal.cekemmy.local`,
           getTempName: (phone: string) => phone,
         },
+        expiresIn: 300,
+        otpLength: 6,
+        allowedAttempts: 3,
         callbackOnVerification: async ({ user }) => {
           await prisma.user.update({
             where: { id: user.id },
@@ -67,6 +83,9 @@ export function createBetterAuth(
         sendVerificationOTP: async ({ email, otp, type }) => {
           await emailProvider.sendOtp(email, otp, type);
         },
+        expiresIn: 300,
+        otpLength: 6,
+        allowedAttempts: 3,
       }),
     ],
   });

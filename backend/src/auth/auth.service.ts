@@ -7,12 +7,14 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { UserRole, UserStatus } from '@prisma/client';
+import { isEmail as isEmailValidator } from 'class-validator';
+import { Prisma, UserRole, UserStatus } from '@prisma/client';
 import { UserRepository } from '@/users/repositories/user.repository';
 import { PrismaService } from 'prisma/prisma.service';
 import { normalizeEmail, normalizePhoneNumber } from '@/helper/phone.helper';
 import { AUTH_INSTANCE } from './auth.constants';
 import type { BetterAuthInstance } from './auth.config';
+import { AuthRateLimiterService } from './services/auth-rate-limiter.service';
 import { LoginDto } from './dto/login.dto';
 import { SetPasswordDto } from './dto/set-password.dto';
 import { RegisterPhoneDto } from './dto/register-phone.dto';
@@ -36,17 +38,24 @@ export class AuthService {
     @Inject(AUTH_INSTANCE) private auth: BetterAuthInstance,
     private userRepository: UserRepository,
     private prisma: PrismaService,
+    private rateLimiter: AuthRateLimiterService,
   ) {}
 
-  async login(dto: LoginDto, headers?: Headers): Promise<Response> {
+  async login(
+    dto: LoginDto,
+    headers?: Headers,
+    clientIp = '127.0.0.1',
+  ): Promise<Response> {
     const isEmail = dto.identifier.includes('@');
     let response: Response;
 
     if (isEmail) {
       const normalizedEmail = normalizeEmail(dto.identifier);
-      if (!normalizedEmail) {
+      if (!normalizedEmail || !isEmailValidator(normalizedEmail)) {
         throw new BadRequestException('Format email tidak valid');
       }
+
+      this.rateLimiter.checkLoginRateLimit(clientIp, normalizedEmail, 'email');
 
       try {
         response = await this.auth.api.signInEmail({
@@ -71,6 +80,8 @@ export class AuthService {
       if (!normalizedPhone) {
         throw new BadRequestException('Format nomor telepon tidak valid');
       }
+
+      this.rateLimiter.checkLoginRateLimit(clientIp, normalizedPhone, 'phone');
 
       try {
         response = await this.auth.api.signInPhoneNumber({
@@ -143,13 +154,6 @@ export class AuthService {
   async setPassword(dto: SetPasswordDto, headers?: Headers, userId?: string) {
     const reqHeaders = headers ?? new Headers();
 
-    await this.auth.api.setPassword({
-      body: {
-        newPassword: dto.newPassword,
-      },
-      headers: reqHeaders,
-    });
-
     let targetUserId = userId;
     if (!targetUserId) {
       const session = await this.auth.api.getSession({ headers: reqHeaders });
@@ -164,9 +168,26 @@ export class AuthService {
       throw new UnauthorizedException('User tidak ditemukan');
     }
 
-    if (user.status === UserStatus.PENDING_ACTIVATION) {
-      await this.userRepository.updateStatus(user.id, UserStatus.ACTIVE);
+    if (user.status === UserStatus.ACTIVE) {
+      throw new BadRequestException(
+        'Akun sudah aktif. Gunakan fitur ubah password untuk mengganti password',
+      );
     }
+
+    if (user.status !== UserStatus.PENDING_ACTIVATION) {
+      throw new BadRequestException(
+        'Status akun tidak valid untuk aktivasi password',
+      );
+    }
+
+    await this.auth.api.setPassword({
+      body: {
+        newPassword: dto.newPassword,
+      },
+      headers: reqHeaders,
+    });
+
+    await this.userRepository.updateStatus(user.id, UserStatus.ACTIVE);
 
     const updatedUser = await this.userRepository.findById(user.id);
     return {
@@ -175,19 +196,52 @@ export class AuthService {
     };
   }
 
-  async registerPhone(dto: RegisterPhoneDto) {
+  async registerPhone(dto: RegisterPhoneDto, clientIp = '127.0.0.1') {
     const normalizedPhone = normalizePhoneNumber(dto.phone);
     if (!normalizedPhone) {
       throw new BadRequestException('Format nomor telepon tidak valid');
     }
 
-    const existingUser = await this.userRepository.findByPhone(normalizedPhone);
-    if (existingUser && existingUser.status === UserStatus.ACTIVE) {
-      throw new ConflictException(
-        'Nomor telepon sudah terdaftar dan aktif. Silakan login langsung',
-      );
+    const name = dto.name?.trim();
+    if (!name) {
+      throw new BadRequestException('Nama tidak boleh kosong');
     }
 
+    // Critical ordering: Rate limit BEFORE DB check/creation and BEFORE Better Auth OTP
+    this.rateLimiter.checkOtpSendRateLimit(clientIp, normalizedPhone, 'phone');
+
+    const existingUser = await this.userRepository.findByPhone(normalizedPhone);
+    if (existingUser) {
+      if (existingUser.status === UserStatus.ACTIVE) {
+        throw new ConflictException(
+          'Nomor telepon sudah terdaftar dan aktif. Silakan login langsung',
+        );
+      }
+    } else {
+      try {
+        await this.userRepository.create({
+          name,
+          phoneNumber: normalizedPhone,
+          role: UserRole.CUSTOMER,
+          status: UserStatus.PENDING_ACTIVATION,
+        });
+      } catch (err: unknown) {
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002'
+        ) {
+          const racedUser =
+            await this.userRepository.findByPhone(normalizedPhone);
+          if (racedUser?.status === UserStatus.ACTIVE) {
+            throw new ConflictException(
+              'Nomor telepon sudah terdaftar dan aktif. Silakan login langsung',
+            );
+          }
+        } else {
+          throw err;
+        }
+      }
+    }
     await this.auth.api.sendPhoneNumberOTP({
       body: {
         phoneNumber: normalizedPhone,
@@ -203,11 +257,18 @@ export class AuthService {
   async verifyPhoneOtp(
     dto: VerifyPhoneOtpDto,
     headers?: Headers,
+    clientIp = '127.0.0.1',
   ): Promise<Response> {
     const normalizedPhone = normalizePhoneNumber(dto.phone);
     if (!normalizedPhone) {
       throw new BadRequestException('Format nomor telepon tidak valid');
     }
+
+    this.rateLimiter.checkOtpVerifyRateLimit(
+      clientIp,
+      normalizedPhone,
+      'phone',
+    );
 
     const response = await this.auth.api.verifyPhoneNumber({
       body: {
@@ -225,11 +286,19 @@ export class AuthService {
     return response;
   }
 
-  async registerEmail(dto: RegisterEmailDto) {
+  async registerEmail(dto: RegisterEmailDto, clientIp = '127.0.0.1') {
     const normalizedEmail = normalizeEmail(dto.email);
-    if (!normalizedEmail) {
+    if (!normalizedEmail || !isEmailValidator(normalizedEmail)) {
       throw new BadRequestException('Format email tidak valid');
     }
+
+    const name = dto.name?.trim();
+    if (!name) {
+      throw new BadRequestException('Nama tidak boleh kosong');
+    }
+
+    // Critical ordering: Rate limit BEFORE DB check/creation and BEFORE Better Auth OTP
+    this.rateLimiter.checkOtpSendRateLimit(clientIp, normalizedEmail, 'email');
 
     const existingUser = await this.userRepository.findByEmail(normalizedEmail);
     if (existingUser) {
@@ -239,23 +308,38 @@ export class AuthService {
         );
       }
     } else {
-      await this.userRepository.create({
-        name: dto.name?.trim() || normalizedEmail.split('@')[0],
-        email: normalizedEmail,
-        role: UserRole.CUSTOMER,
-        status: UserStatus.PENDING_ACTIVATION,
-      });
+      try {
+        await this.userRepository.create({
+          name,
+          email: normalizedEmail,
+          role: UserRole.CUSTOMER,
+          status: UserStatus.PENDING_ACTIVATION,
+        });
+      } catch (err: unknown) {
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002'
+        ) {
+          const racedUser =
+            await this.userRepository.findByEmail(normalizedEmail);
+          if (racedUser?.status === UserStatus.ACTIVE) {
+            throw new ConflictException(
+              'Email sudah terdaftar dan aktif. Silakan login langsung',
+            );
+          }
+        } else {
+          throw err;
+        }
+      }
     }
-
     await this.auth.api.sendVerificationOTP({
       body: {
         email: normalizedEmail,
         type: 'email-verification',
       },
     });
-
     return {
-      message: 'Kode OTP telah dikirim ke alamat email',
+      message: 'Permintaan kode OTP berhasil diproses',
       email: normalizedEmail,
     };
   }
@@ -263,11 +347,18 @@ export class AuthService {
   async verifyEmailOtp(
     dto: VerifyEmailOtpDto,
     headers?: Headers,
+    clientIp = '127.0.0.1',
   ): Promise<Response> {
     const normalizedEmail = normalizeEmail(dto.email);
-    if (!normalizedEmail) {
+    if (!normalizedEmail || !isEmailValidator(normalizedEmail)) {
       throw new BadRequestException('Format email tidak valid');
     }
+
+    this.rateLimiter.checkOtpVerifyRateLimit(
+      clientIp,
+      normalizedEmail,
+      'email',
+    );
 
     const response = await this.auth.api.verifyEmailOTP({
       body: {
