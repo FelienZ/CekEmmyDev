@@ -1,6 +1,12 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { UpdateOrderItemDto } from '../dto/update-orderItem.dto';
-import { OrderItem, OrderStatus, PaymentStatus, Product } from '@prisma/client';
+import {
+  OrderItem,
+  OrderStatus,
+  PaymentStatus,
+  Prisma,
+  Product,
+} from '@prisma/client';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { UpdateOrderDto } from '../dto/update-order.dto';
 
@@ -29,38 +35,49 @@ export class OrdersCalculator {
     oldItem: OrderItem[],
     newItem: { productId: string; change: number }[],
   ) {
-    // payload untuk update {id, change}
-    const payload = new Map<string, { productId: string; change: number }>();
-    for (const n of newItem) {
-      const matchItem = oldItem.find((o) => o.productId === n.productId);
-      if (matchItem) {
-        const delta = matchItem.preparedQuantity - n.change;
-        payload.set(n.productId, {
-          productId: matchItem.productId,
+    const oldAllocated = new Map<string, number>();
+    for (const item of oldItem) {
+      const current = oldAllocated.get(item.productId) ?? 0;
+      oldAllocated.set(item.productId, current + (item.preparedQuantity || 0));
+    }
+
+    const newAllocated = new Map<string, number>();
+    for (const item of newItem) {
+      const current = newAllocated.get(item.productId) ?? 0;
+      newAllocated.set(item.productId, current + (item.change || 0));
+    }
+
+    const allProductIds = new Set([
+      ...oldAllocated.keys(),
+      ...newAllocated.keys(),
+    ]);
+
+    const stockChanges: { productId: string; change: number }[] = [];
+    for (const productId of allProductIds) {
+      const oldPrep = oldAllocated.get(productId) ?? 0;
+      const newPrep = newAllocated.get(productId) ?? 0;
+      const delta = oldPrep - newPrep;
+
+      if (delta !== 0) {
+        stockChanges.push({
+          productId,
           change: delta,
         });
-        continue;
       }
-      payload.set(n.productId, {
-        productId: n.productId,
-        change: -n.change,
-      });
     }
-    return [...payload.values()];
+
+    return stockChanges;
   }
-  paymentStatusSetter(
-    paidAmount: number,
-    totalAmount: number,
-    paymentStatus: PaymentStatus,
-  ) {
-    if (paidAmount === totalAmount) {
-      paymentStatus = PaymentStatus.PAID;
-    } else if (paidAmount === 0) {
-      paymentStatus = PaymentStatus.UNPAID;
+  paymentStatusSetter(paidAmount: number, totalAmount: number): PaymentStatus {
+    const paid = Number(paidAmount);
+    const total = Number(totalAmount);
+    if (paid === total) {
+      return PaymentStatus.PAID;
+    } else if (paid === 0) {
+      return PaymentStatus.UNPAID;
     } else {
-      paymentStatus = PaymentStatus.PARTIAL;
+      return PaymentStatus.PARTIAL;
     }
-    return paymentStatus;
   }
   buildOrderItems(
     item: UpdateOrderItemDto[],
@@ -118,9 +135,11 @@ export class OrdersCalculator {
     orderItems: ReturnType<typeof this.buildOrderItems>,
     totalAmount: number,
     paymentStatus: PaymentStatus,
+    paidAmount: number = 0,
   ) {
     return {
       ...order,
+      paidAmount: Number(paidAmount ?? 0),
       totalAmount: totalAmount,
       orderItems: {
         create: orderItems,
@@ -136,15 +155,23 @@ export class OrdersCalculator {
     paymentStatus: PaymentStatus,
     status: OrderStatus,
     orderItems?: ReturnType<typeof this.buildOrderItems>,
-  ) {
-    const { orderItems: items, ...restOrder } = order;
-    //kecualikan item jika item undefined di payload
-    return {
-      ...restOrder,
-      pickupDate: order.pickupDate ? new Date(order.pickupDate) : undefined,
-      paymentStatus: paymentStatus,
+  ): Prisma.OrderUpdateInput {
+    const payload: Prisma.OrderUpdateInput = {
+      ...(order.customerName !== undefined
+        ? { customerName: order.customerName }
+        : {}),
+      ...(order.orderType !== undefined ? { orderType: order.orderType } : {}),
+      paymentStatus,
       status,
       totalAmount,
+      ...(order.paidAmount !== undefined
+        ? { paidAmount: order.paidAmount }
+        : {}),
+      ...(order.pickupDate !== undefined
+        ? {
+            pickupDate: order.pickupDate ? new Date(order.pickupDate) : null,
+          }
+        : {}),
       ...(orderItems !== undefined
         ? {
             orderItems: {
@@ -154,5 +181,6 @@ export class OrdersCalculator {
           }
         : {}),
     };
+    return payload;
   }
 }

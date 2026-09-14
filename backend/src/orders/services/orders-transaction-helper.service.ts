@@ -5,20 +5,17 @@ import { Prisma, TransactionType } from '@prisma/client';
 export class OrderTransactionHelper {
   constructor() {}
   async ensureOrderSalesCategory(slug: string, tx: Prisma.TransactionClient) {
-    const category = await tx.transactionCategory.findUnique({
+    const category = await tx.transactionCategory.upsert({
       where: { slug },
+      update: {},
+      create: {
+        slug,
+        name: 'Penjualan Order',
+        type: TransactionType.INCOME,
+        isActive: true,
+      },
     });
-    if (!category) {
-      return tx.transactionCategory.create({
-        data: {
-          slug,
-          name: 'Penjualan Order',
-          type: TransactionType.INCOME,
-          isActive: true,
-        },
-      });
-    }
-    if (!category.isActive) {
+    if (!category || !category.isActive) {
       throw new BadRequestException(
         'Kategori Penjualan Order sedang tidak aktif',
       );

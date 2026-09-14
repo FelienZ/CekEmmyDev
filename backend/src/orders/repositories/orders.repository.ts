@@ -41,6 +41,24 @@ export class OrdersRepository {
     });
     return order;
   }
+  async findByIdForUpdate(id: string, client: Prisma.TransactionClient) {
+    const lockedRows = await client.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "Order" WHERE "id" = ${id} FOR UPDATE
+    `;
+    if (!lockedRows || lockedRows.length === 0) {
+      return null;
+    }
+    return await client.order.findUnique({
+      where: { id },
+      include: {
+        orderItems: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+  }
   async create(
     data: Prisma.OrderCreateInput,
     client: Prisma.TransactionClient,
@@ -61,8 +79,12 @@ export class OrdersRepository {
     });
     return order;
   }
-  async updateOrderStatusAsCompleted(id: string) {
-    const order = await this.prisma.order.update({
+  async updateOrderStatusAsCompleted(
+    id: string,
+    client?: Prisma.TransactionClient,
+  ) {
+    const db = client ?? this.prisma;
+    const order = await db.order.update({
       where: { id },
       data: {
         status: 'COMPLETED',
@@ -78,6 +100,21 @@ export class OrdersRepository {
       where: { id },
       data: {
         status: 'CANCELLED',
+      },
+    });
+    return order;
+  }
+  async updatePayment(
+    id: string,
+    paidAmount: number,
+    paymentStatus: PaymentStatus,
+    client: Prisma.TransactionClient,
+  ) {
+    const order = await client.order.update({
+      where: { id },
+      data: {
+        paidAmount,
+        paymentStatus,
       },
     });
     return order;

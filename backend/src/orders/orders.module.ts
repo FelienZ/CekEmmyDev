@@ -7,8 +7,9 @@ import { OrdersCalculator } from './services/orders-calculator.service';
 import { OrdersValidator } from './services/orders-validator.service';
 import { FinanceModule } from '@/finance/finance.module';
 import { OrderTransactionHelper } from './services/orders-transaction-helper.service';
+import { AuthModule } from '@/auth/auth.module';
 @Module({
-  imports: [ProductsModule, FinanceModule],
+  imports: [ProductsModule, FinanceModule, AuthModule],
   controllers: [OrdersController],
   providers: [
     OrdersService,
