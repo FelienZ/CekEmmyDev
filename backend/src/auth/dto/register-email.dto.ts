@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class RegisterEmailDto {
@@ -10,6 +10,9 @@ export class RegisterEmailDto {
   email!: string;
 
   @IsString({ message: 'Nama harus berupa teks' })
-  @IsOptional()
-  name?: string;
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsNotEmpty({ message: 'Nama tidak boleh kosong' })
+  name!: string;
 }
