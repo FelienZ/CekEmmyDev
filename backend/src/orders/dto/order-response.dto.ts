@@ -4,6 +4,7 @@ export class OrderResponseDto {
   id!: string;
   customerName!: string;
   totalAmount!: number;
+  paidAmount!: number;
   orderItems!: OrderItemResponseDto[];
   status!: OrderStatus;
   paymentStatus!: PaymentStatus;
